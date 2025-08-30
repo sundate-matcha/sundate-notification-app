@@ -22,7 +22,7 @@ export default function TabLayout() {
           tabBarInactiveTintColor: "#FFF8DE",
           headerRight: () => (
             <Ionicons
-              name="notifications"
+              name="notifications-outline"
               size={24}
               color="#831B1B"
               style={{ marginRight: 20 }}

@@ -1,6 +1,13 @@
-import { Slot } from "expo-router";
+import { Stack } from "expo-router";
 
 export default function RootLayout() {
-  // Root chỉ cần Slot, không cần Stack
-  return <Slot />;
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="screens/reservationDateInfo"
+        
+      />
+    </Stack>
+  );
 }
