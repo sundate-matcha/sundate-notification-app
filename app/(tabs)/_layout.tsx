@@ -50,19 +50,19 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="overall"
         options={{
-          title: "Home",
+          title: "Tổng quan",
           tabBarIcon: ({ focused }) => (
             <Ionicons
-              name={focused ? "home-sharp" : "home-outline"}
+              name={focused ? "bar-chart" : "bar-chart-outline"}
               color={"#FFF8DE"}
               size={24}
             />
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="about"
         options={{
           title: "About",
@@ -76,7 +76,7 @@ export default function TabLayout() {
             />
           ),
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="calendar"
         options={{
