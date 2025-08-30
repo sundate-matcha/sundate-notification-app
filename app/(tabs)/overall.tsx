@@ -5,7 +5,8 @@ export default function Overall() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Tổng quan</Text>
-      <Link href="../calendar" style={styles.button}>
+      {/* Dùng /calendar để chắc chắn reload không lỗi */}
+      <Link href="/calendar" style={styles.button}>
         Đi đến màn hình Lịch đặt bàn
       </Link>
     </View>
@@ -15,16 +16,16 @@ export default function Overall() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#25292e",
+    backgroundColor: "#F2F2F2",
     alignItems: "center",
     justifyContent: "center",
   },
   text: {
-    color: "#fff",
+    color: "#0",
   },
   button: {
     fontSize: 20,
     textDecorationLine: "underline",
-    color: "#fff",
+    color: "#0",
   },
 });
