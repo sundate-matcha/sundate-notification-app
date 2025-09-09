@@ -106,7 +106,7 @@ export default function Overall() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>📊 Tổng quan đặt bàn</Text>
+      <Text style={styles.header}>ĐƠN ĐẶT BÀN</Text>
 
       {/* Date Selector */}
       <TouchableOpacity

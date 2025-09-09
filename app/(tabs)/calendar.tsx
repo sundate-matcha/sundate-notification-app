@@ -43,23 +43,26 @@ export default function CalendarScreen() {
   const router = useRouter();
 
   type MarkedDates = {
-  [date: string]: {
-    marked?: boolean;
-    dotColor?: string;
-    selected?: boolean;
-    selectedColor?: string;
-    disableTouchEvent?: boolean;
+    [date: string]: {
+      marked?: boolean;
+      dotColor?: string;
+      selected?: boolean;
+      selectedColor?: string;
+      disableTouchEvent?: boolean;
+    };
   };
-};
 
   // Tạo danh sách ngày có đặt bàn (dùng dấu chấm)
-  const markedDates: MarkedDates = reservations.reduce((acc: MarkedDates, r) => {
-    acc[r.date] = {
-      marked: true,
-      dotColor: "#831B1B",
-    };
-    return acc;
-  }, {});
+  const markedDates: MarkedDates = reservations.reduce(
+    (acc: MarkedDates, r) => {
+      acc[r.date] = {
+        marked: true,
+        dotColor: "#831B1B",
+      };
+      return acc;
+    },
+    {}
+  );
 
   const handleDayPress = (day: any) => {
     router.push({
@@ -70,7 +73,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📅 Lịch đặt bàn</Text>
+      <Text style={styles.title}>LỊCH ĐẶT BÀN</Text>
       <View style={styles.calendarWrapper}>
         <Calendar
           monthFormat={"MMMM yyyy"}
@@ -104,7 +107,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 70,
+    marginTop: 20,
     color: "#111",
   },
   calendarWrapper: {
