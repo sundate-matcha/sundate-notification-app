@@ -1,9 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Image, View } from "react-native";
+import { useState } from "react";
+import { Image, View, Pressable } from "react-native";
 
 export default function TabLayout() {
+  const router = useRouter();
+  const [isNotiOpened, setIsNotiOpened] = useState(false);
+
+  const handlePress = () => {
+    setIsNotiOpened(true); // đổi icon
+    router.push("/noti");
+  };
+
   return (
     <>
       <StatusBar style="dark" />
@@ -21,12 +30,14 @@ export default function TabLayout() {
           },
           tabBarInactiveTintColor: "#FFF8DE",
           headerRight: () => (
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color="#831B1B"
-              style={{ marginRight: 20 }}
-            />
+            <Pressable onPress={handlePress}>
+              <Ionicons
+                name={isNotiOpened ? "notifications" : "notifications-outline"}
+                size={24}
+                color="#831B1B"
+                style={{ marginRight: 20 }}
+              />
+            </Pressable>
           ),
           headerTitle: () => (
             <View
@@ -88,6 +99,13 @@ export default function TabLayout() {
                 size={24}
               />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="noti"
+          options={{
+            href: null, // 👈 không hiển thị trên tab bar
+            title: "Thông báo",
           }}
         />
         {/* Không cần thêm Tabs.Screen cho reservationDateInfo vì nó là route con */}
