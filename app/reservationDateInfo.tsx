@@ -82,13 +82,16 @@ export default function ReservationDateInfoScreen() {
   const navigation = useNavigation();
 
   // format ngày
-  const formattedDate = date
-    ? new Date(date).toLocaleDateString("vi-VN", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : "Chi tiết đặt bàn";
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "Chi tiết đặt bàn";
+    const d = new Date(dateStr);
+    const day = d.getDate();
+    const month = d.toLocaleDateString("vi-VN", { month: "long" });
+    const year = d.getFullYear();
+    return `Ngày ${day} ${month}, ${year}`;
+  };
+
+  const formattedDate = formatDate(date);
 
   // 👇 đổi header title khi vào màn hình
   useEffect(() => {
@@ -107,6 +110,7 @@ export default function ReservationDateInfoScreen() {
       },
       headerShadowVisible: false, // bỏ shadow
       headerBackTitle: "",
+      headẻrBackTitleVisible: false,
     });
   }, [navigation, formattedDate]);
 

@@ -90,6 +90,7 @@ export default function TabLayout() {
             ),
           }}
         />
+        {/* Không cần thêm Tabs.Screen cho reservationDateInfo vì nó là route con */}
       </Tabs>
     </>
   );
