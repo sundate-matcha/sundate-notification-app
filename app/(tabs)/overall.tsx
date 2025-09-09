@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import {
+  Dimensions,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import { PieChart } from "react-native-chart-kit";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -14,9 +22,55 @@ const reservations = [
   { id: "6", status: "Đã đến" },
 ];
 
+LocaleConfig.locales["vi"] = {
+  monthNames: [
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12",
+  ],
+  monthNamesShort: [
+    "Thg1",
+    "Thg2",
+    "Thg3",
+    "Thg4",
+    "Thg5",
+    "Thg6",
+    "Thg7",
+    "Thg8",
+    "Thg9",
+    "Thg10",
+    "Thg11",
+    "Thg12",
+  ],
+  dayNames: [
+    "Chủ nhật",
+    "Thứ hai",
+    "Thứ ba",
+    "Thứ tư",
+    "Thứ năm",
+    "Thứ sáu",
+    "Thứ bảy",
+  ],
+  dayNamesShort: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
+  today: "Hôm nay",
+};
+LocaleConfig.defaultLocale = "vi";
+
 export default function Overall() {
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
+
+  // format YYYY-MM-DD cho Calendar
+  const todayStr = date.toISOString().split("T")[0];
 
   // Thống kê theo trạng thái
   const total = reservations.length;
@@ -27,9 +81,27 @@ export default function Overall() {
   };
 
   const pieData = [
-    { name: "Chưa đến", population: stats["Chưa đến"], color: "#FFB74D", legendFontColor: "#333", legendFontSize: 14 },
-    { name: "Đã đến", population: stats["Đã đến"], color: "#4CAF50", legendFontColor: "#333", legendFontSize: 14 },
-    { name: "Đã hủy bàn", population: stats["Đã hủy bàn"], color: "#E57373", legendFontColor: "#333", legendFontSize: 14 },
+    {
+      name: "Chưa đến",
+      population: stats["Chưa đến"],
+      color: "#FFB74D",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
+    {
+      name: "Đã đến",
+      population: stats["Đã đến"],
+      color: "#4CAF50",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
+    {
+      name: "Đã hủy bàn",
+      population: stats["Đã hủy bàn"],
+      color: "#E57373",
+      legendFontColor: "#333",
+      legendFontSize: 14,
+    },
   ];
 
   return (
@@ -37,21 +109,46 @@ export default function Overall() {
       <Text style={styles.header}>📊 Tổng quan đặt bàn</Text>
 
       {/* Date Selector */}
-      <TouchableOpacity style={styles.dateCard} onPress={() => setShowPicker(true)}>
-        <Text style={styles.dateText}>Ngày: {date.toLocaleDateString("vi-VN")}</Text>
+      <TouchableOpacity
+        style={styles.dateCard}
+        onPress={() => setShowPicker(true)}
+      >
+        <Text style={styles.dateText}>
+          Ngày: {date.toLocaleDateString("vi-VN")}
+        </Text>
       </TouchableOpacity>
 
-      {showPicker && (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          display="inline" // iOS inline style
-          onChange={(event, selectedDate) => {
-            setShowPicker(false);
-            if (selectedDate) setDate(selectedDate);
-          }}
-        />
-      )}
+      {/* Overlay Calendar */}
+      <Modal visible={showPicker} transparent animationType="fade">
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPicker(false)}
+        >
+          <View style={styles.modalContent}>
+            <Calendar
+              current={todayStr}
+              onDayPress={(day) => {
+                setDate(new Date(day.dateString));
+                setShowPicker(false);
+              }}
+              markedDates={{
+                [todayStr]: { selected: true, selectedColor: "#831B1B" },
+              }}
+              theme={{
+                todayTextColor: "#831B1B",
+                arrowColor: "#831B1B",
+              }}
+            />
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowPicker(false)}
+            >
+              <Text style={styles.closeText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Stats Cards */}
       <View style={styles.statsRow}>
@@ -61,18 +158,24 @@ export default function Overall() {
         </View>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Chưa đến</Text>
-          <Text style={[styles.cardNumber, { color: "#FF9800" }]}>{stats["Chưa đến"]}</Text>
+          <Text style={[styles.cardNumber, { color: "#FF9800" }]}>
+            {stats["Chưa đến"]}
+          </Text>
         </View>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Đã đến</Text>
-          <Text style={[styles.cardNumber, { color: "#4CAF50" }]}>{stats["Đã đến"]}</Text>
+          <Text style={[styles.cardNumber, { color: "#4CAF50" }]}>
+            {stats["Đã đến"]}
+          </Text>
         </View>
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Đã hủy</Text>
-          <Text style={[styles.cardNumber, { color: "#F44336" }]}>{stats["Đã hủy bàn"]}</Text>
+          <Text style={[styles.cardNumber, { color: "#F44336" }]}>
+            {stats["Đã hủy bàn"]}
+          </Text>
         </View>
       </View>
 
@@ -116,7 +219,32 @@ const styles = StyleSheet.create({
   },
   dateText: { fontSize: 16, color: "#333" },
 
-  statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    width: "90%",
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: "#831B1B",
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  closeText: { color: "#fff", fontWeight: "600" },
+
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
   card: {
     flex: 1,
     backgroundColor: "#fff",
@@ -144,5 +272,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  chartTitle: { fontSize: 16, fontWeight: "600", marginBottom: 10, color: "#333" },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "#333",
+  },
 });
