@@ -1,3 +1,4 @@
+import { HeaderBackContext } from "@react-navigation/elements";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
@@ -100,7 +101,7 @@ export default function ReservationDateInfoScreen() {
       headerTitleAlign: "center", // 👈 căn giữa
       headerStyle: {
         backgroundColor: "#FFF8DE", // giống header gốc
-        height: 200, // 👈 chiều cao custom
+        height: 200,
       },
       headerTintColor: "#831B1B", // màu icon back
       headerTitleStyle: {
@@ -109,8 +110,8 @@ export default function ReservationDateInfoScreen() {
         color: "#831B1B",
       },
       headerShadowVisible: false, // bỏ shadow
-      headerBackTitle: "",
-      headẻrBackTitleVisible: false,
+      headerBackTitle: "Trở lại",
+      headerBackTitleVisible: false,
     });
   }, [navigation, formattedDate]);
 

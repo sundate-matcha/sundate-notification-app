@@ -66,7 +66,7 @@ export default function CalendarScreen() {
 
   const handleDayPress = (day: any) => {
     router.push({
-      pathname: "/reservationDateInfo",
+      pathname: "/screens/reservationDateInfo",
       params: { date: day.dateString },
     });
   };

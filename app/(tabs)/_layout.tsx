@@ -1,16 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
-import { Image, View, Pressable } from "react-native";
+import { Image, Pressable, View } from "react-native";
 
 export default function TabLayout() {
   const router = useRouter();
-  const [isNotiOpened, setIsNotiOpened] = useState(false);
 
   const handlePress = () => {
-    setIsNotiOpened(true); // đổi icon
-    router.push("/noti");
+    // đổi icon
+    router.push("/screens/noti");
   };
 
   return (
@@ -32,10 +30,10 @@ export default function TabLayout() {
           headerRight: () => (
             <Pressable onPress={handlePress}>
               <Ionicons
-                name={isNotiOpened ? "notifications" : "notifications-outline"}
-                size={24}
+                name={"notifications-outline"}
+                size={30}
                 color="#831B1B"
-                style={{ marginRight: 20 }}
+                style={{ marginRight: 40 }}
               />
             </Pressable>
           ),
