@@ -99,13 +99,13 @@ export default function TabLayout() {
             ),
           }}
         />
-        <Tabs.Screen
+        {/* <Tabs.Screen
           name="noti"
           options={{
             href: null, // 👈 không hiển thị trên tab bar
             title: "Thông báo",
           }}
-        />
+        /> */}
         {/* Không cần thêm Tabs.Screen cho reservationDateInfo vì nó là route con */}
       </Tabs>
     </>
