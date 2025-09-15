@@ -99,22 +99,19 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#F2F2F2",
     flex: 1,
-    paddingTop: 20,
+    padding: 16,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "700",
     marginBottom: 70,
-    marginTop: 20,
     color: "#111",
   },
   calendarWrapper: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    marginHorizontal: 16,
     padding: 10,
     shadowColor: "#000",
     shadowOpacity: 0.08,

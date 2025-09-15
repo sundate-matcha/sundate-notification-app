@@ -1,7 +1,13 @@
-import { HeaderBackContext } from "@react-navigation/elements";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 // Data demo
 const reservations = [
@@ -96,27 +102,26 @@ export default function ReservationDateInfoScreen() {
 
   // 👇 đổi header title khi vào màn hình
   useEffect(() => {
-    navigation.setOptions({
-      title: formattedDate,
-      headerTitleAlign: "center", // 👈 căn giữa
-      headerStyle: {
-        backgroundColor: "#FFF8DE", // giống header gốc
-        height: 200,
-      },
-      headerTintColor: "#831B1B", // màu icon back
-      headerTitleStyle: {
-        fontSize: 18,
-        fontWeight: "600",
-        color: "#831B1B",
-      },
-      headerShadowVisible: false, // bỏ shadow
-      headerBackTitle: "Trở lại",
-      headerBackTitleVisible: false,
-    });
-  }, [navigation, formattedDate]);
+    navigation.setOptions({ headerShown: false });
+  }, []);
 
   return (
     <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back-outline" size={30} color="#831B1B" />
+        </TouchableOpacity>
+        <Text style={styles.header}>{formattedDate}</Text>
+        <Ionicons
+          style={styles.settingsIcon}
+          name="ellipsis-vertical"
+          size={30}
+          color="#831B1B"
+        />
+      </View>
       <FlatList
         data={reservations}
         keyExtractor={(item) => item.id}
@@ -130,7 +135,27 @@ export default function ReservationDateInfoScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F2F2" },
-  listContent: { padding: 8, paddingBottom: 16 },
+  headerContainer: {
+    backgroundColor: "#FFF8DE",
+    height: 122,
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    justifyContent: "space-between",
+    flexDirection: "row",
+  },
+  backButton: {
+    marginBottom: 24,
+  },
+  header: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#831B1B",
+    marginBottom: 24,
+  },
+  settingsIcon: {
+    marginBottom: 24,
+  },
+  listContent: { padding: 16, paddingBottom: 16 },
   itemContainer: {
     backgroundColor: "#fff",
     borderRadius: 8,
