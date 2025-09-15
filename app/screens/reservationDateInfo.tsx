@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ReservationDetailModal from "../components/reservationDetailModal";
 
 // Data demo
 const reservations = [
@@ -18,7 +19,7 @@ const reservations = [
     guests: 1,
     table: "Bàn quầy bar",
     time: "09:30",
-    note: "",
+    note: "Không có",
   },
   {
     id: "2",
@@ -27,7 +28,7 @@ const reservations = [
     guests: 2,
     table: "Bàn cửa sổ",
     time: "10:30",
-    note: "",
+    note: "Khách quen",
   },
   {
     id: "3",
@@ -38,37 +39,16 @@ const reservations = [
     time: "11:30",
     note: "",
   },
-  {
-    id: "4",
-    name: "Nguyễn Văn A",
-    phone: "0987654321",
-    guests: 1,
-    table: "Bàn quầy bar",
-    time: "09:30",
-    note: "",
-  },
-  {
-    id: "5",
-    name: "Nguyễn Văn A",
-    phone: "0987654321",
-    guests: 1,
-    table: "Bàn quầy bar",
-    time: "09:30",
-    note: "",
-  },
-  {
-    id: "6",
-    name: "Nguyễn Văn A",
-    phone: "0987654321",
-    guests: 1,
-    table: "Bàn quầy bar",
-    time: "09:30",
-    note: "",
-  },
 ];
 
-const ReservationItem = ({ item }: { item: (typeof reservations)[0] }) => (
-  <View style={styles.itemContainer}>
+const ReservationItem = ({
+  item,
+  onPress,
+}: {
+  item: (typeof reservations)[0];
+  onPress: () => void;
+}) => (
+  <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
     <View style={styles.row}>
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.phone}>{item.phone}</Text>
@@ -81,12 +61,16 @@ const ReservationItem = ({ item }: { item: (typeof reservations)[0] }) => (
     </Text>
     <Text style={styles.label}>Ghi chú:</Text>
     <Text style={styles.table}>{item.table}</Text>
-  </View>
+  </TouchableOpacity>
 );
 
 export default function ReservationDateInfoScreen() {
   const { date } = useLocalSearchParams<{ date?: string }>();
   const navigation = useNavigation();
+
+  const [selectedItem, setSelectedItem] = useState<
+    (typeof reservations)[0] | null
+  >(null);
 
   // format ngày
   const formatDate = (dateStr?: string) => {
@@ -100,13 +84,13 @@ export default function ReservationDateInfoScreen() {
 
   const formattedDate = formatDate(date);
 
-  // 👇 đổi header title khi vào màn hình
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, []);
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.headerContainer}>
         <TouchableOpacity
           style={styles.backButton}
@@ -122,12 +106,23 @@ export default function ReservationDateInfoScreen() {
           color="#831B1B"
         />
       </View>
+
+      {/* List */}
       <FlatList
         data={reservations}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ReservationItem item={item} />}
+        renderItem={({ item }) => (
+          <ReservationItem item={item} onPress={() => setSelectedItem(item)} />
+        )}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+
+      {/* Modal chi tiết */}
+      <ReservationDetailModal
+        visible={!!selectedItem}
+        reservation={selectedItem}
+        onClose={() => setSelectedItem(null)}
       />
     </View>
   );
@@ -143,18 +138,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     flexDirection: "row",
   },
-  backButton: {
-    marginBottom: 24,
-  },
+  backButton: { marginBottom: 24 },
   header: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#831B1B",
     marginBottom: 24,
   },
-  settingsIcon: {
-    marginBottom: 24,
-  },
+  settingsIcon: { marginBottom: 24 },
   listContent: { padding: 16, paddingBottom: 16 },
   itemContainer: {
     backgroundColor: "#fff",
@@ -172,4 +163,6 @@ const styles = StyleSheet.create({
   value: { fontWeight: "600", color: "#222" },
   table: { fontSize: 13, color: "#831B1B", marginTop: 2, fontWeight: "500" },
   separator: { height: 12 },
+
+
 });
