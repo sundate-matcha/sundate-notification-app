@@ -1,6 +1,13 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const notifications = [
   {
@@ -24,27 +31,29 @@ export default function NotiScreen() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    navigation.setOptions({
-      title: "Thông báo",
-      headerTitleAlign: "center", // 👈 căn giữa
-      headerStyle: {
-        backgroundColor: "#FFF8DE", // giống header gốc
-        height: 200, // 👈 chiều cao custom
-      },
-      headerTintColor: "#831B1B", // màu icon back
-      headerTitleStyle: {
-        fontSize: 20,
-        fontWeight: "bold",
-        color: "#831B1B",
-      },
-      headerShadowVisible: false, // bỏ shadow
-      headerBackTitle: "Trở lại",
-    });
-  }, [navigation]);
+    navigation.setOptions({ headerShown: false });
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Thông báo mới</Text>
+    <View style={{ flex: 1 }}>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back-outline" size={30} color="#831B1B" />
+        </TouchableOpacity>
+        <Text style={styles.header}>Thông báo mới</Text>
+        <Ionicons
+          style={styles.settingsIcon}
+          name="ellipsis-vertical"
+          size={30}
+          color="#831B1B"
+        />
+      </View>
+
       <FlatList
+        style={styles.content}
         data={notifications}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -59,23 +68,32 @@ export default function NotiScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFF8DE", padding: 16 },
+  content: { backgroundColor: "#F2F2F2", padding: 16, flex: 1 },
+  headerContainer: {
+    backgroundColor: "#FFF8DE",
+    height: 122,
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+    justifyContent: "space-between",
+    flexDirection: "row",
+  },
+  backButton: {
+    marginBottom: 24,
+  },
   header: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#831B1B",
-    marginBottom: 12,
+    marginBottom: 24,
+  },
+  settingsIcon: {
+    marginBottom: 24,
   },
   card: {
     backgroundColor: "white",
     padding: 12,
     borderRadius: 12,
     marginBottom: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 3,
   },
   title: { fontSize: 16, fontWeight: "bold", color: "#831B1B" },
   message: { fontSize: 14, color: "#333" },

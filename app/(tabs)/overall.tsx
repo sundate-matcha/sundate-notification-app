@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ScrollView,
 } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import { PieChart } from "react-native-chart-kit";
@@ -105,7 +106,7 @@ export default function Overall() {
   ];
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.header}>ĐƠN ĐẶT BÀN</Text>
 
       {/* Date Selector */}
@@ -198,7 +199,99 @@ export default function Overall() {
           absolute
         />
       </View>
-    </View>
+      <Text style={styles.header}>ĐƠN ĐẶT BÀN</Text>
+
+      {/* Date Selector */}
+      <TouchableOpacity
+        style={styles.dateCard}
+        onPress={() => setShowPicker(true)}
+      >
+        <Text style={styles.dateText}>
+          Ngày: {date.toLocaleDateString("vi-VN")}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Overlay Calendar */}
+      <Modal visible={showPicker} transparent animationType="fade">
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPicker(false)}
+        >
+          <View style={styles.modalContent}>
+            <Calendar
+              current={todayStr}
+              onDayPress={(day) => {
+                setDate(new Date(day.dateString));
+                setShowPicker(false);
+              }}
+              markedDates={{
+                [todayStr]: { selected: true, selectedColor: "#831B1B" },
+              }}
+              theme={{
+                todayTextColor: "#831B1B",
+                arrowColor: "#831B1B",
+              }}
+            />
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowPicker(false)}
+            >
+              <Text style={styles.closeText}>Đóng</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Stats Cards */}
+      <View style={styles.statsRow}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Tổng đơn</Text>
+          <Text style={styles.cardNumber}>{total}</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Chưa đến</Text>
+          <Text style={[styles.cardNumber, { color: "#FF9800" }]}>
+            {stats["Chưa đến"]}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Đã đến</Text>
+          <Text style={[styles.cardNumber, { color: "#4CAF50" }]}>
+            {stats["Đã đến"]}
+          </Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Đã hủy</Text>
+          <Text style={[styles.cardNumber, { color: "#F44336" }]}>
+            {stats["Đã hủy bàn"]}
+          </Text>
+        </View>
+      </View>
+
+      {/* Pie Chart */}
+      <View style={styles.chartCard}>
+        <Text style={styles.chartTitle}>Trạng thái đặt bàn</Text>
+        <PieChart
+          data={pieData}
+          width={screenWidth - 40}
+          height={220}
+          chartConfig={{
+            backgroundColor: "#fff",
+            backgroundGradientFrom: "#fff",
+            backgroundGradientTo: "#fff",
+            color: () => "#333",
+          }}
+          accessor={"population"}
+          backgroundColor={"transparent"}
+          paddingLeft={"15"}
+          absolute
+        />
+      </View>
+    </ScrollView>
   );
 }
 
