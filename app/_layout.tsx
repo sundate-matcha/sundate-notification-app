@@ -5,7 +5,11 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="screens/noti" options={{ headerShown: false }} />
-      <Stack.Screen name="screens/reservationDateInfo" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="screens/reservationDateInfo"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
     </Stack>
   );
 }
