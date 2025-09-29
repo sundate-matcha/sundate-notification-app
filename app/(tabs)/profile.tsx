@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ProfileScreen() {
@@ -24,7 +25,7 @@ export default function ProfileScreen() {
           <Text style={styles.buttonText1}>Đổi mật khẩu</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={styles.button} onPress={() => router.push("/(auth)/login")}>
           <Ionicons name="log-out-outline" size={20} color="#E52424" />
           <Text style={styles.buttonText2}>Đăng xuất</Text>
         </TouchableOpacity>

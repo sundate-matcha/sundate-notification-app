@@ -8,7 +8,7 @@ export default function TabLayout() {
 
   const handlePress = () => {
     // đổi icon
-    router.push("/screens/noti");
+    router.push("/screens/notificationScreen");
   };
 
   return (

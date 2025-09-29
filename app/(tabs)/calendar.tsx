@@ -1,68 +1,48 @@
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
-
-// Mockup data
-const reservations = [
-  {
-    id: "1",
-    name: "Nguyễn Văn A",
-    phone: "0987654321",
-    guests: 2,
-    date: "2025-09-10",
-    time: "09:30",
-    table: "Bàn quầy bar",
-    note: "",
-    status: "Chưa đến",
-  },
-  {
-    id: "2",
-    name: "Nguyễn Văn B",
-    phone: "0987654321",
-    guests: 4,
-    date: "2025-09-10",
-    time: "11:00",
-    table: "Bàn cửa sổ",
-    note: "Sinh nhật",
-    status: "Đã đến",
-  },
-  {
-    id: "3",
-    name: "Nguyễn Văn C",
-    phone: "0987654321",
-    guests: 3,
-    date: "2025-09-12",
-    time: "19:00",
-    table: "Bàn dài",
-    note: "",
-    status: "Đã hủy bàn",
-  },
-];
+import React, { useEffect, useState } from "react";
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const [reservations, setReservations] = useState<any[]>([]);
 
   type MarkedDates = {
     [date: string]: {
       marked?: boolean;
       dotColor?: string;
-      selected?: boolean;
-      selectedColor?: string;
-      disableTouchEvent?: boolean;
     };
   };
 
-  // Tạo danh sách ngày có đặt bàn (dùng dấu chấm)
-  const markedDates: MarkedDates = reservations.reduce(
-    (acc: MarkedDates, r) => {
-      acc[r.date] = {
-        marked: true,
-        dotColor: "#831B1B",
-      };
-      return acc;
-    },
-    {}
-  );
+  const [markedDates, setMarkedDates] = useState<MarkedDates>({});
+
+  // Fetch reservations từ API
+  useEffect(() => {
+    const fetchReservations = async () => {
+      try {
+        const res = await fetch(
+          "https://68a2a89fc5a31eb7bb1d6794.mockapi.io/api/reservation"
+        );
+        const data = await res.json();
+        setReservations(data);
+
+        // Tạo danh sách ngày có đặt bàn
+        const marked: MarkedDates = {};
+        data.forEach((r: any) => {
+          if (r.date) {
+            marked[r.date] = {
+              marked: true,
+              dotColor: "#831B1B",
+            };
+          }
+        });
+        setMarkedDates(marked);
+      } catch (err) {
+        console.error("Error fetching reservations:", err);
+      }
+    };
+    fetchReservations();
+  }, []);
 
   const handleDayPress = (day: any) => {
     router.push({
@@ -87,9 +67,6 @@ export default function CalendarScreen() {
             textSectionTitleColor: "#831B1B",
             dotColor: "#831B1B",
             selectedDotColor: "#FFF8DE",
-            textDayFontFamily: "HelveticaNeue-Medium",
-            textMonthFontFamily: "HelveticaNeue-Bold",
-            textDayHeaderFontFamily: "HelveticaNeue",
           }}
         />
       </View>
