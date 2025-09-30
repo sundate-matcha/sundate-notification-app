@@ -61,7 +61,7 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="overall"
+          name="overview"
           options={{
             title: "Tổng quan",
             tabBarIcon: ({ focused }) => (

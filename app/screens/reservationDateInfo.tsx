@@ -15,10 +15,10 @@ type Reservation = {
   id: string;
   fullName: string;
   phone: string;
-  guests: number;
+  guest: number;
   tableType: string;
   time: string;
-  note?: string;
+  description?: string;
   status: "Pending" | "Completed" | "Cancelled";
   date: string;
 };
@@ -36,7 +36,7 @@ const ReservationItem = ({
       <Text style={styles.phone}>{item.phone}</Text>
     </View>
     <Text style={styles.label}>
-      Số khách: <Text style={styles.value}>{item.guests}</Text>
+      Số khách: <Text style={styles.value}>{item.guest}</Text>
     </Text>
     <Text style={styles.label}>
       Thời gian: <Text style={styles.value}>{item.time}</Text>

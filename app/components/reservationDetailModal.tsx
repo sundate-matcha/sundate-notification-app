@@ -12,10 +12,10 @@ type Reservation = {
   id: string;
   fullName: string;
   phone: string;
-  guests: number;
+  guest: number;
   tableType: string;
   time: string;
-  note?: string;
+  description?: string;
   status: "Pending" | "Completed" | "Cancelled";
 };
 
@@ -61,10 +61,10 @@ const ReservationDetailModal: React.FC<Props> = ({
           <Text style={styles.modalTitle}>Chi tiết đặt bàn</Text>
           <Text>Tên: {reservation.fullName}</Text>
           <Text>SĐT: {reservation.phone}</Text>
-          <Text>Số khách: {reservation.guests}</Text>
+          <Text>Số khách: {reservation.guest}</Text>
           <Text>Thời gian: {reservation.time}</Text>
           <Text>Bàn: {reservation.tableType}</Text>
-          <Text>Ghi chú: {reservation.note || "Không có"}</Text>
+          <Text>Ghi chú: {reservation.description || "Không có"}</Text>
           <Text>
             Trạng thái:{" "}
             <Text

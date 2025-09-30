@@ -69,7 +69,7 @@ export default function LoginScreen() {
   const handleLogin = () => {
     if (username === "admin" && password === "123456") {
       closeModal();
-      router.push("/(tabs)/overall");
+      router.push("/(tabs)/overview");
     } else {
       alert("Sai tài khoản hoặc mật khẩu");
     }
