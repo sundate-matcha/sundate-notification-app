@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -67,7 +68,7 @@ export default function LoginScreen() {
   };
 
   const handleLogin = () => {
-    if (username === "admin" && password === "123456") {
+    if (username === "sundatematcha" && password === "123456") {
       closeModal();
       router.push("/(tabs)/overview");
     } else {
@@ -77,6 +78,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="dark" />
       {/* Logo */}
       <Image
         source={require("../../assets/images/Symbol.png")}

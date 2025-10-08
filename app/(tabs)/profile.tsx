@@ -8,14 +8,12 @@ export default function ProfileScreen() {
       {/* Card Profile */}
       <View style={styles.card}>
         <Image
-          source={{
-            uri: "https://i.pravatar.cc/300", // ảnh đại diện demo
-          }}
+          source={require("../../assets/images/Logo.png")}
           style={styles.avatar}
         />
-        <Text style={styles.name}>Nguyễn Văn A</Text>
-        <Text style={styles.info}>📞 0123 456 789</Text>
-        <Text style={styles.info}>✉️ nguyenvana@example.com</Text>
+        <Text style={styles.name}>Admin</Text>
+        {/* <Text style={styles.info}>📞 0123 456 789</Text>
+        <Text style={styles.info}>✉️ nguyenvana@example.com</Text> */}
       </View>
 
       {/* Nút đổi mật khẩu */}
