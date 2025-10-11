@@ -2,6 +2,8 @@ import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+
 
 export default function CalendarScreen() {
   const router = useRouter();
@@ -20,17 +22,16 @@ export default function CalendarScreen() {
   useEffect(() => {
     const fetchReservations = async () => {
       try {
-        const res = await fetch(
-          "https://68a2a89fc5a31eb7bb1d6794.mockapi.io/api/reservation"
-        );
-        const data = await res.json();
+        const res = await fetch("https://sundate.justdemo.work/api/reservations");
+        const { reservations: data } = await res.json();
         setReservations(data);
 
         // Tạo danh sách ngày có đặt bàn
         const marked: MarkedDates = {};
         data.forEach((r: any) => {
           if (r.date) {
-            marked[r.date] = {
+            const dateStr = r.date.split("T")[0];
+            marked[dateStr] = {
               marked: true,
               dotColor: "#831B1B",
             };
@@ -43,6 +44,7 @@ export default function CalendarScreen() {
     };
     fetchReservations();
   }, []);
+  
 
   const handleDayPress = (day: any) => {
     router.push({

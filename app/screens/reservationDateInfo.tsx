@@ -13,14 +13,20 @@ import ReservationDetailModal from "../components/reservationDetailModal";
 
 type Reservation = {
   id: string;
-  fullName: string;
+  name: string;
   phone: string;
-  guest: number;
-  tableType: string;
+  guests: number;
+  tableCategory: string; // ID của bàn
+  tableCategoryName: string; // Tên bàn (có thể undefined nếu chưa ánh xạ)
   time: string;
-  description?: string;
-  status: "Pending" | "Completed" | "Cancelled";
+  specialRequests?: string;
+  status: "pending" | "confirmed" | "cancelled";
   date: string;
+};
+
+type TableCategory = {
+  id: string;
+  name: string;
 };
 
 const ReservationItem = ({
@@ -32,11 +38,11 @@ const ReservationItem = ({
 }) => (
   <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
     <View style={styles.row}>
-      <Text style={styles.fullName}>{item.fullName}</Text>
+      <Text style={styles.fullName}>{item.name}</Text>
       <Text style={styles.phone}>{item.phone}</Text>
     </View>
     <Text style={styles.label}>
-      Số khách: <Text style={styles.value}>{item.guest}</Text>
+      Số khách: <Text style={styles.value}>{item.guests}</Text>
     </Text>
     <Text style={styles.label}>
       Thời gian: <Text style={styles.value}>{item.time}</Text>
@@ -48,53 +54,88 @@ const ReservationItem = ({
           styles.value,
           {
             color:
-              item.status === "Pending"
+              item.status === "pending"
                 ? "orange"
-                : item.status === "Completed"
+                : item.status === "confirmed"
                 ? "green"
                 : "red",
           },
         ]}
       >
-        {item.status}
+        {item.status === "pending"
+          ? "Chưa xác nhận"
+          : item.status === "confirmed"
+          ? "Đã xác nhận"
+          : "Đã hủy"}
       </Text>
     </Text>
-    <Text style={styles.label}>Bàn: {item.tableType}</Text>
+    <Text style={styles.label}>
+      Bàn: {item.tableCategoryName || item.tableCategory}
+    </Text>
   </TouchableOpacity>
 );
 
 export default function ReservationDateInfoScreen() {
   const { date } = useLocalSearchParams<{ date?: string }>();
   const navigation = useNavigation();
-
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [tableCategories, setTableCategories] = useState<TableCategory[]>([]);
   const [selectedItem, setSelectedItem] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Fetch table categories
   useEffect(() => {
-    navigation.setOptions({ headerShown: false });
+    const fetchTableCategories = async () => {
+      try {
+        const res = await fetch(
+          "https://sundate.justdemo.work/api/table-categories/active"
+        );
+        if (!res.ok) throw new Error(`Lỗi HTTP ${res.status}`);
+        const data = await res.json();
+        setTableCategories(data);
+      } catch (err) {
+        console.error("Error fetching table categories:", err);
+      }
+    };
+    fetchTableCategories();
   }, []);
 
-  // Fetch API
+  // Fetch reservations
   useEffect(() => {
     const fetchReservations = async () => {
       if (!date) return;
       setLoading(true);
       try {
         const res = await fetch(
-          "https://68a2a89fc5a31eb7bb1d6794.mockapi.io/api/reservation"
+          `https://sundate.justdemo.work/api/reservations?date=${date}`
         );
-        const data: Reservation[] = await res.json();
-        const filtered = data.filter((r) => r.date === date);
-        setReservations(filtered);
+        if (!res.ok) throw new Error(`Lỗi HTTP ${res.status}`);
+        const { reservations: data } = await res.json();
+        // Ánh xạ tableCategory ID sang tên bàn
+        const mappedReservations = data.map((r: any) => ({
+          ...r,
+          tableCategoryName:
+            tableCategories.find((tc) => tc.id === r.tableCategory)?.name ||
+            r.tableCategory,
+        }));
+        setReservations(
+          mappedReservations.filter((r: any) => r.date.split("T")[0] === date)
+        );
+        setError(null);
       } catch (err) {
         console.error("Error fetching reservations:", err);
+        setError("Không thể tải dữ liệu. Vui lòng thử lại.");
       } finally {
         setLoading(false);
       }
     };
     fetchReservations();
-  }, [date]);
+  }, [date, tableCategories]);
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, []);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Chi tiết đặt bàn";
@@ -133,12 +174,14 @@ export default function ReservationDateInfoScreen() {
         />
       </View>
 
-      {/* Loading spinner */}
+      {/* Loading or Error */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#831B1B" />
           <Text style={{ marginTop: 8 }}>Đang tải dữ liệu...</Text>
         </View>
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text>
       ) : (
         <FlatList
           data={reservations}
@@ -165,6 +208,7 @@ export default function ReservationDateInfoScreen() {
         reservation={selectedItem}
         onClose={() => setSelectedItem(null)}
         onUpdateStatus={handleUpdateStatus}
+        tableCategories={tableCategories}
       />
     </View>
   );
@@ -203,16 +247,16 @@ const styles = StyleSheet.create({
   phone: { fontSize: 15, color: "#222" },
   label: { fontSize: 13, color: "#444", marginTop: 2 },
   value: { fontWeight: "600", color: "#222" },
-  tableType: {
-    fontSize: 13,
-    color: "#831B1B",
-    marginTop: 2,
-    fontWeight: "500",
-  },
   separator: { height: 12 },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  errorText: {
+    textAlign: "center",
+    color: "#F44336",
+    fontSize: 16,
+    marginTop: 20,
   },
 });

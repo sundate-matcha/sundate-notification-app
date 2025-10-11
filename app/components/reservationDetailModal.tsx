@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -10,13 +11,20 @@ import {
 
 type Reservation = {
   id: string;
-  fullName: string;
+  name: string;
   phone: string;
-  guest: number;
-  tableType: string;
+  guests: number;
+  tableCategory: string;
+  tableCategoryName: string;
   time: string;
-  description?: string;
-  status: "Pending" | "Completed" | "Cancelled";
+  specialRequests?: string;
+  status: "pending" | "confirmed" | "cancelled";
+  date: string;
+};
+
+type TableCategory = {
+  id: string;
+  name: string;
 };
 
 interface Props {
@@ -24,6 +32,7 @@ interface Props {
   reservation: Reservation | null;
   onClose: () => void;
   onUpdateStatus: (id: string, status: Reservation["status"]) => void;
+  tableCategories: TableCategory[];
 }
 
 const ReservationDetailModal: React.FC<Props> = ({
@@ -31,23 +40,47 @@ const ReservationDetailModal: React.FC<Props> = ({
   reservation,
   onClose,
   onUpdateStatus,
+  tableCategories,
 }) => {
   if (!reservation) return null;
 
-  // Hàm đổi trạng thái
+  // ✅ Hàm đổi trạng thái (sửa đúng route backend)
   const handleChangeStatus = async (newStatus: Reservation["status"]) => {
+    if (!reservation) return;
+
+    // Xác định đúng endpoint dựa vào trạng thái
+    const endpoint =
+      newStatus === "confirmed"
+        ? `https://sundate.justdemo.work/api/reservations/${reservation.id}/confirm`
+        : `https://sundate.justdemo.work/api/reservations/${reservation.id}/cancel`;
+
+    console.log("Calling endpoint:", endpoint);
+
     try {
-      await fetch(
-        `https://68a2a89fc5a31eb7bb1d6794.mockapi.io/api/reservation/${reservation.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
-      onUpdateStatus(reservation.id, newStatus); // cập nhật UI
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.log("Error response from API:", errorData);
+        throw new Error(
+          `Lỗi HTTP ${res.status}: ${
+            errorData.error || errorData.message || "Yêu cầu không hợp lệ"
+          }`
+        );
+      }
+
+      onUpdateStatus(reservation.id, newStatus);
+      onClose(); // Đóng modal sau khi cập nhật thành công
     } catch (error) {
-      console.error("Lỗi update:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Đã xảy ra lỗi không xác định";
+      console.error("Lỗi update:", errorMessage);
+      Alert.alert("Lỗi", errorMessage);
     }
   };
 
@@ -59,42 +92,51 @@ const ReservationDetailModal: React.FC<Props> = ({
           onPress={(e) => e.stopPropagation()}
         >
           <Text style={styles.modalTitle}>Chi tiết đặt bàn</Text>
-          <Text>Tên: {reservation.fullName}</Text>
+
+          <Text>Tên: {reservation.name}</Text>
           <Text>SĐT: {reservation.phone}</Text>
-          <Text>Số khách: {reservation.guest}</Text>
+          <Text>Số khách: {reservation.guests}</Text>
           <Text>Thời gian: {reservation.time}</Text>
-          <Text>Bàn: {reservation.tableType}</Text>
-          <Text>Ghi chú: {reservation.description || "Không có"}</Text>
+          <Text>
+            Bàn:{" "}
+            {tableCategories.find((tc) => tc.id === reservation.tableCategory)
+              ?.name || reservation.tableCategory}
+          </Text>
+          <Text>Ghi chú: {reservation.specialRequests || "Không có"}</Text>
           <Text>
             Trạng thái:{" "}
             <Text
               style={{
                 color:
-                  reservation.status === "Pending"
+                  reservation.status === "pending"
                     ? "orange"
-                    : reservation.status === "Completed"
+                    : reservation.status === "confirmed"
                     ? "green"
                     : "red",
               }}
             >
-              {reservation.status}
+              {reservation.status === "pending"
+                ? "Chưa xác nhận"
+                : reservation.status === "confirmed"
+                ? "Đã xác nhận"
+                : "Đã hủy"}
             </Text>
           </Text>
 
           {/* Nút hành động */}
-          {reservation.status === "Pending" && (
+          {reservation.status === "pending" && (
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "red" }]}
-                onPress={() => handleChangeStatus("Cancelled")}
+                onPress={() => handleChangeStatus("cancelled")}
               >
-                <Text style={{ color: "#fff" }}>Cancel</Text>
+                <Text style={{ color: "#fff" }}>Hủy</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "green" }]}
-                onPress={() => handleChangeStatus("Completed")}
+                onPress={() => handleChangeStatus("confirmed")}
               >
-                <Text style={{ color: "#fff" }}>Complete</Text>
+                <Text style={{ color: "#fff" }}>Xác nhận</Text>
               </TouchableOpacity>
             </View>
           )}

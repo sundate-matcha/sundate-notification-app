@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,17 +14,18 @@ import {
 } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import { PieChart } from "react-native-chart-kit";
+import { useFocusEffect } from "@react-navigation/native";
 
 const screenWidth = Dimensions.get("window").width;
 
 // Định nghĩa type cho reservation từ API
 type Reservation = {
   id: string;
-  status: "Pending" | "Completed" | "Cancelled";
-  date: string; // Thêm date để đánh dấu ngày
+  status: "pending" | "confirmed" | "cancelled";
+  date: string;
 };
 
-// Định nghĩa type cho markedDates (mở rộng để hỗ trợ selected và selectedColor)
+// Định nghĩa type cho markedDates
 type MarkedDates = {
   [date: string]: {
     marked?: boolean;
@@ -81,88 +83,95 @@ export default function Overall() {
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [allReservations, setAllReservations] = useState<Reservation[]>([]); // Lưu toàn bộ reservation để đánh dấu
+  const [allReservations, setAllReservations] = useState<Reservation[]>([]);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  // Format YYYY-MM-DD cho Calendar
   const todayStr = date.toISOString().split("T")[0];
 
-  // Fetch dữ liệu từ API
-  useEffect(() => {
-    const fetchReservations = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          "https://68a2a89fc5a31eb7bb1d6794.mockapi.io/api/reservation"
-        );
-        if (!res.ok) {
-          throw new Error(`Lỗi HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        // Lưu toàn bộ reservation để đánh dấu ngày
-        setAllReservations(data);
-        // Lọc theo ngày được chọn
-        const filtered = data.filter(
-          (r: any) => r.date === todayStr
-        ) as Reservation[];
-        setReservations(filtered);
-
-        // Tạo markedDates cho các ngày có reservation
-        const marked: MarkedDates = {};
-        data.forEach((r: any) => {
-          if (r.date) {
-            marked[r.date] = {
-              marked: true,
-              dotColor: "#831B1B",
-            };
-          }
-        });
-        // Đánh dấu ngày được chọn
-        marked[todayStr] = {
-          ...marked[todayStr],
-          selected: true,
-          selectedColor: "#831B1B",
-        };
-        setMarkedDates(marked);
-
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching reservations:", err);
-        setError("Không thể tải dữ liệu. Vui lòng thử lại.");
-      } finally {
-        setLoading(false);
+  // Hàm fetch dữ liệu từ API
+  const fetchReservations = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("https://sundate.justdemo.work/api/reservations");
+      if (!res.ok) {
+        throw new Error(`Lỗi HTTP ${res.status}`);
       }
-    };
-    fetchReservations();
+      const { reservations: data } = await res.json();
+      setAllReservations(data);
+      const filtered = data.filter(
+        (r: any) => r.date.split("T")[0] === todayStr
+      ) as Reservation[];
+      setReservations(filtered);
+
+      // Tạo markedDates
+      const marked: MarkedDates = {};
+      data.forEach((r: any) => {
+        if (r.date) {
+          const dateStr = new Date(r.date).toISOString().split("T")[0]; // Chuẩn hóa định dạng ngày
+          marked[dateStr] = {
+            marked: true,
+            dotColor: "#831B1B",
+          };
+        }
+      });
+      marked[todayStr] = {
+        ...marked[todayStr],
+        selected: true,
+        selectedColor: "#831B1B",
+      };
+      setMarkedDates(marked);
+
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching reservations:", err);
+      setError("Không thể tải dữ liệu. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [todayStr]);
 
-  // Thống kê theo trạng thái (ánh xạ sang tiếng Việt)
+  // Load lại khi tab được focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchReservations();
+    }, [fetchReservations])
+  );
+
+  // Hàm xử lý kéo để làm mới
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchReservations();
+  };
+
+  // Thống kê theo trạng thái
   const statusMap: { [key: string]: string } = {
-    Pending: "Chưa đến",
-    Completed: "Đã đến",
-    Cancelled: "Đã hủy bàn",
+    pending: "Chưa xác nhận",
+    confirmed: "Đã xác nhận",
+    cancelled: "Đã hủy bàn",
   };
 
   const total = reservations.length;
   const stats = {
-    "Chưa đến": reservations.filter((r) => r.status === "Pending").length,
-    "Đã đến": reservations.filter((r) => r.status === "Completed").length,
-    "Đã hủy bàn": reservations.filter((r) => r.status === "Cancelled").length,
+    "Chưa xác nhận": reservations.filter((r) => r.status === "pending").length,
+    "Đã xác nhận": reservations.filter((r) => r.status === "confirmed").length,
+    "Đã hủy bàn": reservations.filter((r) => r.status === "cancelled").length,
   };
 
   const pieData = [
     {
-      name: "Chưa đến",
-      population: stats["Chưa đến"],
+      name: "Chưa xác nhận",
+      population: stats["Chưa xác nhận"],
       color: "#FF9800",
       legendFontColor: "#333",
       legendFontSize: 14,
     },
     {
-      name: "Đã đến",
-      population: stats["Đã đến"],
+      name: "Đã xác nhận",
+      population: stats["Đã xác nhận"],
       color: "#4CAF50",
       legendFontColor: "#333",
       legendFontSize: 14,
@@ -174,10 +183,15 @@ export default function Overall() {
       legendFontColor: "#333",
       legendFontSize: 14,
     },
-  ].filter((item) => item.population > 0); // Loại bỏ trạng thái không có dữ liệu
+  ].filter((item) => item.population > 0);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#831B1B" />
+      }
+    >
       <Text style={styles.header}>ĐƠN ĐẶT BÀN</Text>
 
       {/* Date Selector */}
@@ -186,10 +200,7 @@ export default function Overall() {
         onPress={() => setShowPicker(true)}
       >
         <Text style={styles.dateText}>
-          Ngày:{" "}
-          <Text style={styles.chosenDate}>
-            {date.toLocaleDateString("vi-VN")}
-          </Text>
+          Ngày: <Text style={styles.chosenDate}>{date.toLocaleDateString("vi-VN")}</Text>
         </Text>
         <Ionicons name="chevron-down-outline" size={20} color="#831B1B" />
       </TouchableOpacity>
@@ -217,7 +228,6 @@ export default function Overall() {
                 selectedDotColor: "#FFF8DE",
               }}
             />
-
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setShowPicker(false)}
@@ -245,18 +255,17 @@ export default function Overall() {
               <Text style={styles.cardNumber}>{total}</Text>
             </View>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Chưa đến</Text>
+              <Text style={styles.cardTitle}>Chưa xác nhận</Text>
               <Text style={[styles.cardNumber, { color: "#FF9800" }]}>
-                {stats["Chưa đến"]}
+                {stats["Chưa xác nhận"]}
               </Text>
             </View>
           </View>
-
           <View style={styles.statsRow}>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Đã đến</Text>
+              <Text style={styles.cardTitle}>Đã xác nhận</Text>
               <Text style={[styles.cardNumber, { color: "#4CAF50" }]}>
-                {stats["Đã đến"]}
+                {stats["Đã xác nhận"]}
               </Text>
             </View>
             <View style={styles.card}>
@@ -315,9 +324,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   dateText: { fontSize: 16, color: "#333" },
-  chosenDate: {
-    fontWeight: 700,
-  },
+  chosenDate: { fontWeight: "700" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
