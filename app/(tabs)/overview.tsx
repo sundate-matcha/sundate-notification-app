@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -14,18 +14,15 @@ import {
 } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import { PieChart } from "react-native-chart-kit";
-import { useFocusEffect } from "@react-navigation/native";
 
 const screenWidth = Dimensions.get("window").width;
 
-// Định nghĩa type cho reservation từ API
 type Reservation = {
   id: string;
   status: "pending" | "confirmed" | "cancelled";
   date: string;
 };
 
-// Định nghĩa type cho markedDates
 type MarkedDates = {
   [date: string]: {
     marked?: boolean;
@@ -35,7 +32,6 @@ type MarkedDates = {
   };
 };
 
-// Cấu hình lịch tiếng Việt
 LocaleConfig.locales["vi"] = {
   monthNames: [
     "Tháng 1",
@@ -91,11 +87,13 @@ export default function Overall() {
 
   const todayStr = date.toISOString().split("T")[0];
 
-  // Hàm fetch dữ liệu từ API
-  const fetchReservations = useCallback(async () => {
+  // Fetch reservations on mount
+  const fetchReservations = async () => {
     setLoading(true);
     try {
-      const res = await fetch("https://sundate.justdemo.work/api/reservations");
+      const res = await fetch(
+        "https://sundate.justdemo.work/api/reservations?limit=0"
+      );
       if (!res.ok) {
         throw new Error(`Lỗi HTTP ${res.status}`);
       }
@@ -106,11 +104,10 @@ export default function Overall() {
       ) as Reservation[];
       setReservations(filtered);
 
-      // Tạo markedDates
       const marked: MarkedDates = {};
       data.forEach((r: any) => {
         if (r.date) {
-          const dateStr = new Date(r.date).toISOString().split("T")[0]; // Chuẩn hóa định dạng ngày
+          const dateStr = new Date(r.date).toISOString().split("T")[0];
           marked[dateStr] = {
             marked: true,
             dotColor: "#831B1B",
@@ -132,22 +129,44 @@ export default function Overall() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [todayStr]);
+  };
 
-  // Load lại khi tab được focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchReservations();
-    }, [fetchReservations])
-  );
+  // Run fetch on mount
+  useEffect(() => {
+    fetchReservations();
+  }, []);
 
-  // Hàm xử lý kéo để làm mới
+  // Handle pull-to-refresh
   const onRefresh = () => {
     setRefreshing(true);
     fetchReservations();
   };
 
-  // Thống kê theo trạng thái
+  // Update reservations when date changes
+  useEffect(() => {
+    const filtered = allReservations.filter(
+      (r: any) => r.date.split("T")[0] === todayStr
+    ) as Reservation[];
+    setReservations(filtered);
+
+    const marked: MarkedDates = {};
+    allReservations.forEach((r: any) => {
+      if (r.date) {
+        const dateStr = new Date(r.date).toISOString().split("T")[0];
+        marked[dateStr] = {
+          marked: true,
+          dotColor: "#831B1B",
+        };
+      }
+    });
+    marked[todayStr] = {
+      ...marked[todayStr],
+      selected: true,
+      selectedColor: "#831B1B",
+    };
+    setMarkedDates(marked);
+  }, [date]);
+
   const statusMap: { [key: string]: string } = {
     pending: "Chưa xác nhận",
     confirmed: "Đã xác nhận",
@@ -189,23 +208,28 @@ export default function Overall() {
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#831B1B" />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#831B1B"
+        />
       }
     >
       <Text style={styles.header}>ĐƠN ĐẶT BÀN</Text>
 
-      {/* Date Selector */}
       <TouchableOpacity
         style={styles.dateCard}
         onPress={() => setShowPicker(true)}
       >
         <Text style={styles.dateText}>
-          Ngày: <Text style={styles.chosenDate}>{date.toLocaleDateString("vi-VN")}</Text>
+          Ngày:{" "}
+          <Text style={styles.chosenDate}>
+            {date.toLocaleDateString("vi-VN")}
+          </Text>
         </Text>
         <Ionicons name="chevron-down-outline" size={20} color="#831B1B" />
       </TouchableOpacity>
 
-      {/* Overlay Calendar */}
       <Modal visible={showPicker} transparent animationType="fade">
         <Pressable
           style={styles.modalOverlay}
@@ -238,7 +262,6 @@ export default function Overall() {
         </Pressable>
       </Modal>
 
-      {/* Loading or Error */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#831B1B" />
@@ -248,7 +271,6 @@ export default function Overall() {
         <Text style={styles.errorText}>{error}</Text>
       ) : (
         <>
-          {/* Stats Cards */}
           <View style={styles.statsRow}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Tổng đơn</Text>
@@ -276,7 +298,6 @@ export default function Overall() {
             </View>
           </View>
 
-          {/* Pie Chart */}
           {total > 0 ? (
             <View style={styles.chartCard}>
               <Text style={styles.chartTitle}>Trạng thái đặt bàn</Text>

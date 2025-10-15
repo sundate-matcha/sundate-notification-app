@@ -1,13 +1,18 @@
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-import { Calendar } from "react-native-calendars";
 import React, { useEffect, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
-
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Calendar } from "react-native-calendars";
 
 export default function CalendarScreen() {
   const router = useRouter();
   const [reservations, setReservations] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   type MarkedDates = {
     [date: string]: {
@@ -18,33 +23,37 @@ export default function CalendarScreen() {
 
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
 
-  // Fetch reservations từ API
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const res = await fetch("https://sundate.justdemo.work/api/reservations");
-        const { reservations: data } = await res.json();
-        setReservations(data);
+  // Fetch reservations from API
+  const fetchReservations = async () => {
+    try {
+      const res = await fetch(
+        "https://sundate.justdemo.work/api/reservations?limit=0"
+      );
+      const { reservations: data } = await res.json();
+      setReservations(data);
 
-        // Tạo danh sách ngày có đặt bàn
-        const marked: MarkedDates = {};
-        data.forEach((r: any) => {
-          if (r.date) {
-            const dateStr = r.date.split("T")[0];
-            marked[dateStr] = {
-              marked: true,
-              dotColor: "#831B1B",
-            };
-          }
-        });
-        setMarkedDates(marked);
-      } catch (err) {
-        console.error("Error fetching reservations:", err);
-      }
-    };
+      const marked: MarkedDates = {};
+      data.forEach((r: any) => {
+        if (r.date) {
+          const dateStr = r.date.split("T")[0];
+          marked[dateStr] = {
+            marked: true,
+            dotColor: "#831B1B",
+          };
+        }
+      });
+      setMarkedDates(marked);
+    } catch (err) {
+      console.error("Error fetching reservations:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Fetch on mount
+  useEffect(() => {
     fetchReservations();
   }, []);
-  
 
   const handleDayPress = (day: any) => {
     router.push({
@@ -53,8 +62,22 @@ export default function CalendarScreen() {
     });
   };
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchReservations();
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#831B1B"
+        />
+      }
+    >
       <Text style={styles.title}>LỊCH ĐẶT BÀN</Text>
       <View style={styles.calendarWrapper}>
         <Calendar
@@ -72,7 +95,7 @@ export default function CalendarScreen() {
           }}
         />
       </View>
-    </View>
+    </ScrollView>
   );
 }
 

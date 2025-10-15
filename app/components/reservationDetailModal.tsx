@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Alert,
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -84,6 +85,17 @@ const ReservationDetailModal: React.FC<Props> = ({
     }
   };
 
+  const displayPhone = reservation.phone.startsWith("+84")
+    ? reservation.phone.replace("+84", "0")
+    : reservation.phone;
+
+  const handleCall = () => {
+    const phoneNumber = displayPhone.replace(/\s+/g, ""); // loại bỏ khoảng trắng
+    Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+      Alert.alert("Không thể thực hiện cuộc gọi", "Vui lòng thử lại sau.");
+    });
+  };
+
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
@@ -93,16 +105,18 @@ const ReservationDetailModal: React.FC<Props> = ({
         >
           <Text style={styles.modalTitle}>Chi tiết đặt bàn</Text>
 
-          <Text>Tên: {reservation.name}</Text>
-          <Text>SĐT: {reservation.phone}</Text>
-          <Text>Số khách: {reservation.guests}</Text>
-          <Text>Thời gian: {reservation.time}</Text>
+          <Text>Tên: <Text style={styles.value}>{reservation.name}</Text></Text>
+          <Text>SĐT: <Text style={styles.value}>{displayPhone}</Text></Text>
+          <Text>Số khách: <Text style={styles.value}>{reservation.guests}</Text></Text>
+          <Text>Thời gian: <Text style={styles.value}>{reservation.time}</Text></Text>
           <Text>
             Bàn:{" "}
-            {tableCategories.find((tc) => tc.id === reservation.tableCategory)
-              ?.name || reservation.tableCategory}
+            <Text style={styles.value}>
+              {tableCategories.find((tc) => tc.id === reservation.tableCategory)
+                ?.name || reservation.tableCategory}
+            </Text>
           </Text>
-          <Text>Ghi chú: {reservation.specialRequests || "Không có"}</Text>
+          <Text>Ghi chú: <Text style={styles.value}>{reservation.specialRequests || "Không có"}</Text></Text>
           <Text>
             Trạng thái:{" "}
             <Text
@@ -124,13 +138,19 @@ const ReservationDetailModal: React.FC<Props> = ({
           </Text>
 
           {/* Nút hành động */}
-          {reservation.status === "pending" && (
+          {reservation.status === "pending" ? (
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "red" }]}
                 onPress={() => handleChangeStatus("cancelled")}
               >
-                <Text style={{ color: "#fff" }}>Hủy</Text>
+                <Text style={{ color: "#fff" }}>Hủy bàn</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: "orange" }]}
+                onPress={handleCall}
+              >
+                <Text style={{ color: "#fff" }}>Gọi ngay</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, { backgroundColor: "green" }]}
@@ -139,11 +159,11 @@ const ReservationDetailModal: React.FC<Props> = ({
                 <Text style={{ color: "#fff" }}>Xác nhận</Text>
               </TouchableOpacity>
             </View>
+          ) : (
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Text style={{ color: "#fff" }}>Đóng</Text>
+            </TouchableOpacity>
           )}
-
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={{ color: "#fff" }}>Đóng</Text>
-          </TouchableOpacity>
         </Pressable>
       </Pressable>
     </Modal>
@@ -185,4 +205,5 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: "center",
   },
+  value: { fontWeight: "600" },
 });

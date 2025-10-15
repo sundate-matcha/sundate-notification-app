@@ -1,11 +1,13 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -16,8 +18,8 @@ type Reservation = {
   name: string;
   phone: string;
   guests: number;
-  tableCategory: string; // ID của bàn
-  tableCategoryName: string; // Tên bàn (có thể undefined nếu chưa ánh xạ)
+  tableCategory: string;
+  tableCategoryName: string;
   time: string;
   specialRequests?: string;
   status: "pending" | "confirmed" | "cancelled";
@@ -35,45 +37,51 @@ const ReservationItem = ({
 }: {
   item: Reservation;
   onPress: () => void;
-}) => (
-  <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
-    <View style={styles.row}>
-      <Text style={styles.fullName}>{item.name}</Text>
-      <Text style={styles.phone}>{item.phone}</Text>
-    </View>
-    <Text style={styles.label}>
-      Số khách: <Text style={styles.value}>{item.guests}</Text>
-    </Text>
-    <Text style={styles.label}>
-      Thời gian: <Text style={styles.value}>{item.time}</Text>
-    </Text>
-    <Text style={styles.label}>
-      Trạng thái:{" "}
-      <Text
-        style={[
-          styles.value,
-          {
-            color:
-              item.status === "pending"
-                ? "orange"
-                : item.status === "confirmed"
-                ? "green"
-                : "red",
-          },
-        ]}
-      >
-        {item.status === "pending"
-          ? "Chưa xác nhận"
-          : item.status === "confirmed"
-          ? "Đã xác nhận"
-          : "Đã hủy"}
+}) => {
+  const displayPhone = item.phone.startsWith("+84")
+    ? item.phone.replace("+84", "0")
+    : item.phone;
+
+  return (
+    <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
+      <View style={styles.row}>
+        <Text style={styles.fullName}>{item.name}</Text>
+        <Text style={styles.phone}>{displayPhone}</Text>
+      </View>
+      <Text style={styles.label}>
+        Số khách: <Text style={styles.value}>{item.guests}</Text>
       </Text>
-    </Text>
-    <Text style={styles.label}>
-      Bàn: {item.tableCategoryName || item.tableCategory}
-    </Text>
-  </TouchableOpacity>
-);
+      <Text style={styles.label}>
+        Thời gian: <Text style={styles.value}>{item.time}</Text>
+      </Text>
+      <Text style={styles.label}>
+        Trạng thái:{" "}
+        <Text
+          style={[
+            styles.value,
+            {
+              color:
+                item.status === "pending"
+                  ? "orange"
+                  : item.status === "confirmed"
+                  ? "green"
+                  : "red",
+            },
+          ]}
+        >
+          {item.status === "pending"
+            ? "Chưa xác nhận"
+            : item.status === "confirmed"
+            ? "Đã xác nhận"
+            : "Đã hủy"}
+        </Text>
+      </Text>
+      <Text style={styles.label}>
+        Bàn: <Text style={styles.value}>{item.tableCategoryName}</Text>
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 export default function ReservationDateInfoScreen() {
   const { date } = useLocalSearchParams<{ date?: string }>();
@@ -83,8 +91,17 @@ export default function ReservationDateInfoScreen() {
   const [selectedItem, setSelectedItem] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "confirmed" | "cancelled"
+  >("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch table categories
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, []);
+
+  // Fetch table categories on mount
   useEffect(() => {
     const fetchTableCategories = async () => {
       try {
@@ -101,7 +118,7 @@ export default function ReservationDateInfoScreen() {
     fetchTableCategories();
   }, []);
 
-  // Fetch reservations
+  // Fetch reservations on mount
   useEffect(() => {
     const fetchReservations = async () => {
       if (!date) return;
@@ -112,7 +129,6 @@ export default function ReservationDateInfoScreen() {
         );
         if (!res.ok) throw new Error(`Lỗi HTTP ${res.status}`);
         const { reservations: data } = await res.json();
-        // Ánh xạ tableCategory ID sang tên bàn
         const mappedReservations = data.map((r: any) => ({
           ...r,
           tableCategoryName:
@@ -133,9 +149,55 @@ export default function ReservationDateInfoScreen() {
     fetchReservations();
   }, [date, tableCategories]);
 
-  useEffect(() => {
-    navigation.setOptions({ headerShown: false });
-  }, []);
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch(
+        `https://sundate.justdemo.work/api/reservations?date=${date}`
+      );
+      if (!res.ok) throw new Error(`Lỗi HTTP ${res.status}`);
+      const { reservations: data } = await res.json();
+      const mappedReservations = data.map((r: any) => ({
+        ...r,
+        tableCategoryName:
+          tableCategories.find((tc) => tc.id === r.tableCategory)?.name ||
+          r.tableCategory,
+      }));
+      setReservations(
+        mappedReservations.filter((r: any) => r.date.split("T")[0] === date)
+      );
+      setError(null);
+    } catch (err) {
+      console.error("Error refreshing reservations:", err);
+      setError("Không thể làm mới dữ liệu. Vui lòng thử lại.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Bộ đếm số lượng từng loại
+  const counts = useMemo(() => {
+    return {
+      all: reservations.length,
+      pending: reservations.filter((r) => r.status === "pending").length,
+      confirmed: reservations.filter((r) => r.status === "confirmed").length,
+      cancelled: reservations.filter((r) => r.status === "cancelled").length,
+    };
+  }, [reservations]);
+
+  // Lọc dữ liệu
+  const filteredReservations = reservations.filter((r) => {
+    const matchesStatus =
+      statusFilter === "all" ? true : r.status === statusFilter;
+
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      r.name.toLowerCase().includes(query) ||
+      r.phone.toLowerCase().includes(query);
+
+    return matchesStatus && matchesSearch;
+  });
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Chi tiết đặt bàn";
@@ -174,7 +236,45 @@ export default function ReservationDateInfoScreen() {
         />
       </View>
 
-      {/* Loading or Error */}
+      {/* Bộ lọc + search */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {[
+            { label: `Tất cả (${counts.all})`, value: "all" },
+            { label: `Chờ xác nhận (${counts.pending})`, value: "pending" },
+            { label: `Đã xác nhận (${counts.confirmed})`, value: "confirmed" },
+            { label: `Đã hủy (${counts.cancelled})`, value: "cancelled" },
+          ].map((f) => (
+            <TouchableOpacity
+              key={f.value}
+              style={[
+                styles.filterButton,
+                statusFilter === f.value && styles.filterButtonActive,
+              ]}
+              onPress={() => setStatusFilter(f.value as any)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  statusFilter === f.value && styles.filterTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm theo tên hoặc số điện thoại..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Danh sách */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#831B1B" />
@@ -182,27 +282,33 @@ export default function ReservationDateInfoScreen() {
         </View>
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
+      ) : filteredReservations.length === 0 ? (
+        <Text style={{ textAlign: "center", marginTop: 20 }}>
+          Không có đặt bàn phù hợp
+        </Text>
       ) : (
-        <FlatList
-          data={reservations}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ReservationItem
-              item={item}
-              onPress={() => setSelectedItem(item)}
+        <ScrollView
+          style={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#831B1B"
             />
-          )}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListEmptyComponent={
-            <Text style={{ textAlign: "center", marginTop: 20 }}>
-              Không có đặt bàn trong ngày này
-            </Text>
           }
-        />
+        >
+          {filteredReservations.map((item) => (
+            <React.Fragment key={item.id}>
+              <ReservationItem
+                item={item}
+                onPress={() => setSelectedItem(item)}
+              />
+              <View style={styles.separator} />
+            </React.Fragment>
+          ))}
+        </ScrollView>
       )}
 
-      {/* Modal chi tiết */}
       <ReservationDetailModal
         visible={!!selectedItem}
         reservation={selectedItem}
@@ -252,11 +358,47 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 20,
   },
   errorText: {
     textAlign: "center",
     color: "#F44336",
     fontSize: 16,
     marginTop: 20,
+  },
+  filterContainer: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomColor: "#DDD",
+    borderBottomWidth: 1,
+  },
+  filterButton: {
+    borderWidth: 1,
+    borderColor: "#831B1B",
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginRight: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: "#831B1B",
+  },
+  filterText: {
+    color: "#831B1B",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  filterTextActive: {
+    color: "#fff",
+  },
+  searchInput: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    marginTop: 10,
   },
 });
