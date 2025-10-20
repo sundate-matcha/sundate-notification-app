@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,10 +18,12 @@ import {
 } from "react-native";
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [showOverlay, setShowOverlay] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false); // <-- state cho ẩn/hiện mật khẩu
+  const [loading, setLoading] = useState(false);
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -67,12 +70,70 @@ export default function LoginScreen() {
     });
   };
 
-  const handleLogin = () => {
-    if (username === "sundatematcha" && password === "123456") {
+  const handleLogin = async () => {
+    if (!username || !password) {
+      alert("Vui lòng nhập tài khoản và mật khẩu");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = { identifier: username, password };
+      console.log("[Login] request payload:", { identifier: username });
+
+      const res = await fetch("https://sundate.justdemo.work/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      let data: any = text;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        // body is not JSON
+      }
+
+      console.log("[Login] status:", res.status, res.statusText);
+      console.log("[Login] response body:", data);
+
+      if (!res.ok) {
+        console.error("[Login] failed", { status: res.status, body: data });
+        alert(data?.message || "Đăng nhập thất bại");
+        return;
+      }
+
+      // Lưu token (thử các tên trường phổ biến)
+      const token =
+        data?.token ||
+        data?.jwt ||
+        data?.accessToken ||
+        data?.data?.token ||
+        "";
+      if (token) {
+        await SecureStore.setItemAsync("sundate_token", token);
+        console.log("[Login] token saved");
+      }
+
+      // Nếu API trả user/fullName thì lưu luôn (tiết kiệm 1 request)
+      const fullName =
+        data?.user?.fullName ||
+        data?.user?.name ||
+        data?.fullName ||
+        data?.name;
+      if (fullName) {
+        await SecureStore.setItemAsync("sundate_fullName", fullName);
+        console.log("[Login] fullName saved:", fullName);
+      }
+
       closeModal();
       router.push("/(tabs)/overview");
-    } else {
-      alert("Sai tài khoản hoặc mật khẩu");
+    } catch (err) {
+      console.error("[Login] network/error:", err);
+      alert("Lỗi kết nối. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,9 +153,9 @@ export default function LoginScreen() {
         <TouchableOpacity style={styles.signInButton} onPress={openModal}>
           <Text style={styles.signInText}>Log In</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.signUpButton}>
+        {/* <TouchableOpacity style={styles.signUpButton}>
           <Text style={styles.signUpText}>Register</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Bottom Sheet Modal */}
@@ -113,7 +174,9 @@ export default function LoginScreen() {
                 >
                   <Text style={styles.overlayTitle}>Log In</Text>
                   <View>
-                    <Text style={styles.inputLabel}>Email</Text>
+                    <Text style={styles.inputLabel}>
+                      Email hoặc tên đăng nhập
+                    </Text>
                     <TextInput
                       style={styles.input}
                       value={username}
@@ -138,10 +201,16 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity
-                    style={styles.signInBtn}
+                    style={[
+                      styles.signInBtn,
+                      loading ? { opacity: 0.7 } : null,
+                    ]}
                     onPress={handleLogin}
+                    disabled={loading}
                   >
-                    <Text style={styles.signInText2}>Log In</Text>
+                    <Text style={styles.signInText2}>
+                      {loading ? "Đang đăng nhập..." : "Log In"}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity

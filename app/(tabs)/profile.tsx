@@ -1,8 +1,85 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const storedName = await SecureStore.getItemAsync("sundate_fullName");
+        if (storedName) {
+          setFullName(storedName);
+          setLoading(false);
+          return;
+        }
+
+        const token = await SecureStore.getItemAsync("sundate_token");
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        // Gọi đúng endpoint /api/auth/profile
+        const res = await fetch(
+          "https://sundate.justdemo.work/api/auth/profile",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        const text = await res.text();
+        let data: any = text;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          // keep raw text if not JSON
+        }
+
+        if (res.ok) {
+          // server trả { user }
+          const user = data?.user || {};
+          const name =
+            (user.firstName &&
+              user.lastName &&
+              `${user.firstName} ${user.lastName}`) ||
+            user.fullName ||
+            user.name ||
+            user.username ||
+            null;
+          if (name) {
+            setFullName(name);
+            await SecureStore.setItemAsync("sundate_fullName", name);
+          }
+        } else {
+          console.warn("[Profile] /auth/profile failed", res.status, data);
+        }
+      } catch (err) {
+        console.error("[Profile] error loading profile:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("sundate_token");
+    await SecureStore.deleteItemAsync("sundate_fullName");
+    router.push("/(auth)/login");
+  };
+
   return (
     <View style={styles.container}>
       {/* Card Profile */}
@@ -11,9 +88,11 @@ export default function ProfileScreen() {
           source={require("../../assets/images/Logo.png")}
           style={styles.avatar}
         />
-        <Text style={styles.name}>Admin</Text>
-        {/* <Text style={styles.info}>📞 0123 456 789</Text>
-        <Text style={styles.info}>✉️ nguyenvana@example.com</Text> */}
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.name}>{fullName || "Admin"}</Text>
+        )}
       </View>
 
       {/* Nút đổi mật khẩu */}
@@ -23,7 +102,7 @@ export default function ProfileScreen() {
           <Text style={styles.buttonText1}>Đổi mật khẩu</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button} onPress={() => router.push("/(auth)/login")}>
+        <TouchableOpacity style={styles.button} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#E52424" />
           <Text style={styles.buttonText2}>Đăng xuất</Text>
         </TouchableOpacity>
