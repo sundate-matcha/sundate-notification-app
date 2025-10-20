@@ -16,15 +16,16 @@ export default function TabLayout() {
       <StatusBar style="dark" />
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: "#FFF8DE",
           headerStyle: {
             backgroundColor: "#FFF8DE",
-            height: 122,
+            height: 120,
           },
           headerShadowVisible: false,
           headerTintColor: "#831B1B",
+          tabBarActiveTintColor: "#FFF8DE",
           tabBarStyle: {
             backgroundColor: "#831B1B",
+            height: 60,
           },
           tabBarInactiveTintColor: "#FFF8DE",
           headerRight: () => (
@@ -78,11 +79,7 @@ export default function TabLayout() {
           options={{
             title: "Lịch đặt bàn",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? "calendar" : "calendar-outline"}
-                color={color}
-                size={24}
-              />
+              <Ionicons name={focused ? "calendar" : "calendar-outline"} color={color} size={24} />
             ),
           }}
         />
@@ -91,11 +88,7 @@ export default function TabLayout() {
           options={{
             title: "Hồ sơ",
             tabBarIcon: ({ focused }) => (
-              <Ionicons
-                name={focused ? "person" : "person-outline"}
-                color={"#FFF8DE"}
-                size={24}
-              />
+              <Ionicons name={focused ? "person" : "person-outline"} color={"#FFF8DE"} size={24} />
             ),
           }}
         />

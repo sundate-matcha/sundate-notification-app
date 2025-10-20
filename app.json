@@ -8,6 +8,11 @@
     "scheme": "sundatenotificationapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "sundate-mobile-app"
+      }
+    },
     "ios": {
       "supportsTablet": true
     },
