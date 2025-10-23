@@ -363,7 +363,7 @@ export default function Overall() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F2F2F2", padding: 16 },
+  container: { flex: 1, backgroundColor: "#f8fafd", padding: 16 },
   header: { fontSize: 22, fontWeight: "700", marginBottom: 16, color: "#111" },
   dateCard: {
     flex: 1,

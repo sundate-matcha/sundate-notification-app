@@ -335,7 +335,7 @@ export default function ReservationDateInfoScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F2F2F2" },
+  container: { flex: 1, backgroundColor: "#f8fafd" },
   headerContainer: {
     backgroundColor: "#FFF8DE",
     height: 122,
