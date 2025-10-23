@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -76,6 +77,7 @@ LocaleConfig.locales["vi"] = {
 LocaleConfig.defaultLocale = "vi";
 
 export default function Overall() {
+  const router = useRouter();
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -272,30 +274,62 @@ export default function Overall() {
       ) : (
         <>
           <View style={styles.statsRow}>
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Tổng đơn</Text>
               <Text style={styles.cardNumber}>{total}</Text>
-            </View>
-            <View style={styles.card}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr, status: "pending" },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Chưa xác nhận</Text>
               <Text style={[styles.cardNumber, { color: "#FF9800" }]}>
                 {stats["Chưa xác nhận"]}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={styles.statsRow}>
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr, status: "confirmed" },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Đã xác nhận</Text>
               <Text style={[styles.cardNumber, { color: "#4CAF50" }]}>
                 {stats["Đã xác nhận"]}
               </Text>
-            </View>
-            <View style={styles.card}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr, status: "cancelled" },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Đã hủy</Text>
               <Text style={[styles.cardNumber, { color: "#F44336" }]}>
                 {stats["Đã hủy bàn"]}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {total > 0 ? (

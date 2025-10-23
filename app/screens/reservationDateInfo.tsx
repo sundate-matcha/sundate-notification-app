@@ -84,7 +84,10 @@ const ReservationItem = ({
 };
 
 export default function ReservationDateInfoScreen() {
-  const { date } = useLocalSearchParams<{ date?: string }>();
+  const { date, status } = useLocalSearchParams<{
+    date?: string;
+    status?: string;
+  }>();
   const navigation = useNavigation();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tableCategories, setTableCategories] = useState<TableCategory[]>([]);
@@ -117,6 +120,17 @@ export default function ReservationDateInfoScreen() {
     };
     fetchTableCategories();
   }, []);
+
+  // Initialize status filter from route param if present
+  useEffect(() => {
+    if (
+      status === "pending" ||
+      status === "confirmed" ||
+      status === "cancelled"
+    ) {
+      setStatusFilter(status as any);
+    }
+  }, [status]);
 
   // Fetch reservations on mount
   useEffect(() => {
