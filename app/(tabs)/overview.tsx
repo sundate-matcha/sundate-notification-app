@@ -1,8 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -205,6 +207,93 @@ export default function Overall() {
       legendFontSize: 14,
     },
   ].filter((item) => item.population > 0);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await SecureStore.getItemAsync("sundate_token");
+        if (!token) {
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Vui lòng đăng nhập để tiếp tục sử dụng hệ thống.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login"),
+              },
+            ]
+          );
+          return;
+        }
+
+        const res = await fetch(
+          "https://sundate.justdemo.work/api/auth/verify",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (!res.ok) {
+          await SecureStore.deleteItemAsync("sundate_token");
+          await SecureStore.deleteItemAsync("sundate_fullName");
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Vui lòng đăng nhập lại để tiếp tục sử dụng.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login"),
+              },
+            ]
+          );
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.valid) {
+          await SecureStore.deleteItemAsync("sundate_token");
+          await SecureStore.deleteItemAsync("sundate_fullName");
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Vui lòng đăng nhập lại để tiếp tục sử dụng.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login"),
+              },
+            ]
+          );
+          return;
+        }
+
+        // Token hợp lệ → lấy tên user nếu chưa có
+        const user = data.user;
+        const name =
+          (user?.firstName && user?.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user?.username) || "Admin";
+
+        const storedName = await SecureStore.getItemAsync("sundate_fullName");
+        if (!storedName && name) {
+          await SecureStore.setItemAsync("sundate_fullName", name);
+        }
+      } catch (error) {
+        console.error("[Overview] Token check failed:", error);
+        Alert.alert(
+          "Lỗi đăng nhập",
+          "Không thể xác minh tài khoản. Vui lòng đăng nhập lại.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/(auth)/login"),
+            },
+          ]
+        );
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   return (
     <ScrollView

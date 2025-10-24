@@ -1,11 +1,14 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,6 +27,11 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false); // <-- state cho ẩn/hiện mật khẩu
   const [loading, setLoading] = useState(false);
+  const [resultModalVisible, setResultModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"loading" | "success" | "error">(
+    "loading"
+  );
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -71,16 +79,22 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    Keyboard.dismiss();
+    setShowOverlay(false);
     if (!username || !password) {
-      alert("Vui lòng nhập tài khoản và mật khẩu");
+      setModalType("error");
+      setModalMessage("Vui lòng nhập tài khoản và mật khẩu.");
+      setResultModalVisible(true);
       return;
     }
 
     setLoading(true);
+    setModalType("loading");
+    setModalMessage("Đang đăng nhập...");
+    setResultModalVisible(true);
+
     try {
       const payload = { identifier: username, password };
-      console.log("[Login] request payload:", { identifier: username });
-
       const res = await fetch("https://sundate.justdemo.work/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,47 +105,64 @@ export default function LoginScreen() {
       let data: any = text;
       try {
         data = JSON.parse(text);
-      } catch (e) {
-        // body is not JSON
+      } catch (e) {}
+
+      if (res.status === 400 && data?.error === "Validation failed") {
+        throw new Error("Vui lòng nhập đầy đủ thông tin đăng nhập.");
       }
 
-      console.log("[Login] status:", res.status, res.statusText);
-      console.log("[Login] response body:", data);
+      if (res.status === 401 && data?.message === "Invalid credentials") {
+        throw new Error("Sai tài khoản hoặc mật khẩu. Vui lòng kiểm tra lại.");
+      }
+
+      if (res.status === 401 && data?.message === "Account is deactivated") {
+        throw new Error(
+          "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên."
+        );
+      }
 
       if (!res.ok) {
-        console.error("[Login] failed", { status: res.status, body: data });
-        alert(data?.message || "Đăng nhập thất bại");
-        return;
+        throw new Error(
+          data?.message || "Đăng nhập thất bại. Vui lòng thử lại."
+        );
       }
 
-      // Lưu token (thử các tên trường phổ biến)
+      // ✅ Đăng nhập thành công
       const token =
         data?.token ||
         data?.jwt ||
         data?.accessToken ||
         data?.data?.token ||
         "";
+
       if (token) {
         await SecureStore.setItemAsync("sundate_token", token);
-        console.log("[Login] token saved");
       }
 
-      // Nếu API trả user/fullName thì lưu luôn (tiết kiệm 1 request)
       const fullName =
         data?.user?.fullName ||
-        data?.user?.name ||
+        (data?.user?.firstName && data?.user?.lastName
+          ? `${data.user.firstName} ${data.user.lastName}`
+          : data?.user?.username) ||
         data?.fullName ||
-        data?.name;
+        data?.name ||
+        "";
+
       if (fullName) {
         await SecureStore.setItemAsync("sundate_fullName", fullName);
-        console.log("[Login] fullName saved:", fullName);
       }
 
-      closeModal();
-      router.push("/(tabs)/overview");
-    } catch (err) {
-      console.error("[Login] network/error:", err);
-      alert("Lỗi kết nối. Vui lòng thử lại.");
+      setModalType("success");
+      setModalMessage("Đăng nhập thành công!");
+      setTimeout(() => {
+        setResultModalVisible(false);
+        closeModal();
+        router.replace("/(tabs)/overview");
+      }, 1500);
+    } catch (err: any) {
+      console.error("[Login] error:", err);
+      setModalType("error");
+      setModalMessage(err.message || "Lỗi kết nối. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -224,6 +255,50 @@ export default function LoginScreen() {
             </TouchableWithoutFeedback>
           </Animated.View>
         </TouchableWithoutFeedback>
+      </Modal>
+      {/* Modal kết quả đăng nhập */}
+      <Modal transparent visible={resultModalVisible} animationType="fade">
+        <View style={styles.resultOverlay}>
+          <View style={styles.resultBox}>
+            {modalType === "loading" && (
+              <>
+                <ActivityIndicator size="large" color="#831B1B" />
+                <Text style={styles.resultText}>{modalMessage}</Text>
+              </>
+            )}
+
+            {modalType === "success" && (
+              <>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={60}
+                  color="#4CAF50"
+                />
+                <Text style={styles.resultText}>{modalMessage}</Text>
+              </>
+            )}
+
+            {modalType === "error" && (
+              <>
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={60}
+                  color="#E52424"
+                />
+                <Text style={styles.resultText}>{modalMessage}</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={() => {
+                    setResultModalVisible(false);
+                    openModal();
+                  }}
+                >
+                  <Text style={styles.retryText}>Đăng nhập lại</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -348,5 +423,35 @@ const styles = StyleSheet.create({
   cancelText: {
     color: "#831B1B",
     fontWeight: "bold",
+  },
+  resultOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  resultBox: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 30,
+    alignItems: "center",
+    width: "80%",
+  },
+  resultText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 15,
+    color: "#333",
+  },
+  retryBtn: {
+    marginTop: 20,
+    backgroundColor: "#831B1B",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });
