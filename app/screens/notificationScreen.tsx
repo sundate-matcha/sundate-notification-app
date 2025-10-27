@@ -12,16 +12,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useNotifications } from "../hooks/useNotifications";
-import { NotificationData } from "../services/notificationService";
+import { useNotifications } from "../../hooks/useNotifications";
+import { NotificationData } from "../../services/notificationService";
 
 export default function NotiScreen() {
   const navigation = useNavigation();
   const [showFilterModal, setShowFilterModal] = useState(false);
   
-  // For demo purposes, using a hardcoded user ID
-  // In production, this should come from authentication context
-  const userId = "demo-user-id";
+  // userId is now optional - can be null if user is not logged in
+  const userId = null; // TODO: Get from authentication context
   
   const {
     notifications,
@@ -153,19 +152,6 @@ export default function NotiScreen() {
     </View>
   );
 
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-        <Text style={styles.errorText}>Có lỗi xảy ra</Text>
-        <Text style={styles.errorSubtext}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={refreshNotifications}>
-          <Text style={styles.retryButtonText}>Thử lại</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.headerContainer}>
@@ -176,7 +162,7 @@ export default function NotiScreen() {
           <Ionicons name="chevron-back-outline" size={30} color="#831B1B" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-        <Text style={styles.header}>Thông báo mới</Text>
+        <Text style={styles.header}>Thông báo</Text>
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -199,24 +185,35 @@ export default function NotiScreen() {
         </View>
       </View>
 
-      <FlatList
-        style={styles.content}
-        data={notifications}
-        keyExtractor={(item) => item.id}
-        renderItem={renderNotificationItem}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refreshNotifications}
-            colors={["#831B1B"]}
-            tintColor="#831B1B"
-          />
-        }
-        onEndReached={loadMoreNotifications}
-        onEndReachedThreshold={0.1}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={renderEmptyState}
-      />
+      {error ? (
+        <View style={styles.errorContentContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
+          <Text style={styles.errorText}>Có lỗi xảy ra</Text>
+          <Text style={styles.errorSubtext}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refreshNotifications}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          style={styles.content}
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          renderItem={renderNotificationItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={refreshNotifications}
+              colors={["#831B1B"]}
+              tintColor="#831B1B"
+            />
+          }
+          onEndReached={loadMoreNotifications}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmptyState}
+        />
+      )}
 
       {/* Filter Modal */}
       <Modal
@@ -439,6 +436,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 32,
+  },
+  errorContentContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+    backgroundColor: "#F2F2F2",
   },
   errorText: {
     fontSize: 18,

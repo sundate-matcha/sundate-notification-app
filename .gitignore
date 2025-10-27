@@ -40,3 +40,6 @@ app-example
 
 
 .helper-files/
+
+.env
+.env.local

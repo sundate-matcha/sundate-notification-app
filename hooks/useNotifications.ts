@@ -20,7 +20,7 @@ export interface UseNotificationsReturn {
   currentFilter: string | null;
 }
 
-export function useNotifications(initialUserId?: string): UseNotificationsReturn {
+export function useNotifications(initialUserId?: string | null): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

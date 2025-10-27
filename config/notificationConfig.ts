@@ -1,7 +1,7 @@
 // Notification configuration
 export const NOTIFICATION_CONFIG = {
   // API Configuration
-  API_BASE_URL: "https://sundate.justdemo.work/api",
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_URL || "https://sundate.justdemo.work/api",
   
   // Polling Configuration
   POLLING_INTERVAL: 60000, // 60 seconds - increased to reduce server load
@@ -32,6 +32,7 @@ export const NOTIFICATION_CONFIG = {
   // Storage Keys
   STORAGE_KEYS: {
     USER_ID: 'userId',
+    PUSH_TOKEN: 'pushToken',
     LAST_NOTIFICATION_CHECK: 'lastNotificationCheck',
     NOTIFICATION_SETTINGS: 'notificationSettings',
   },
