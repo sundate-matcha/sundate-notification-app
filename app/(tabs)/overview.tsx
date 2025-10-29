@@ -1,7 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -76,6 +79,7 @@ LocaleConfig.locales["vi"] = {
 LocaleConfig.defaultLocale = "vi";
 
 export default function Overall() {
+  const router = useRouter();
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -204,6 +208,93 @@ export default function Overall() {
     },
   ].filter((item) => item.population > 0);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await SecureStore.getItemAsync("sundate_token");
+        if (!token) {
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Vui lòng đăng nhập để tiếp tục sử dụng hệ thống.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login"),
+              },
+            ]
+          );
+          return;
+        }
+
+        const res = await fetch(
+          "https://sundate.justdemo.work/api/auth/verify",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (!res.ok) {
+          await SecureStore.deleteItemAsync("sundate_token");
+          await SecureStore.deleteItemAsync("sundate_fullName");
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Vui lòng đăng nhập lại để tiếp tục sử dụng.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login"),
+              },
+            ]
+          );
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.valid) {
+          await SecureStore.deleteItemAsync("sundate_token");
+          await SecureStore.deleteItemAsync("sundate_fullName");
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Vui lòng đăng nhập lại để tiếp tục sử dụng.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.replace("/(auth)/login"),
+              },
+            ]
+          );
+          return;
+        }
+
+        // Token hợp lệ → lấy tên user nếu chưa có
+        const user = data.user;
+        const name =
+          (user?.firstName && user?.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user?.username) || "Admin";
+
+        const storedName = await SecureStore.getItemAsync("sundate_fullName");
+        if (!storedName && name) {
+          await SecureStore.setItemAsync("sundate_fullName", name);
+        }
+      } catch (error) {
+        console.error("[Overview] Token check failed:", error);
+        Alert.alert(
+          "Lỗi đăng nhập",
+          "Không thể xác minh tài khoản. Vui lòng đăng nhập lại.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.replace("/(auth)/login"),
+            },
+          ]
+        );
+      }
+    };
+
+    checkAuth();
+  }, []);
+
   return (
     <ScrollView
       style={styles.container}
@@ -272,30 +363,62 @@ export default function Overall() {
       ) : (
         <>
           <View style={styles.statsRow}>
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Tổng đơn</Text>
               <Text style={styles.cardNumber}>{total}</Text>
-            </View>
-            <View style={styles.card}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr, status: "pending" },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Chưa xác nhận</Text>
               <Text style={[styles.cardNumber, { color: "#FF9800" }]}>
                 {stats["Chưa xác nhận"]}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={styles.statsRow}>
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr, status: "confirmed" },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Đã xác nhận</Text>
               <Text style={[styles.cardNumber, { color: "#4CAF50" }]}>
                 {stats["Đã xác nhận"]}
               </Text>
-            </View>
-            <View style={styles.card}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() =>
+                router.push({
+                  pathname: "/screens/reservationDateInfo",
+                  params: { date: todayStr, status: "cancelled" },
+                })
+              }
+            >
               <Text style={styles.cardTitle}>Đã hủy</Text>
               <Text style={[styles.cardNumber, { color: "#F44336" }]}>
                 {stats["Đã hủy bàn"]}
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {total > 0 ? (
@@ -329,7 +452,7 @@ export default function Overall() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F2F2F2", padding: 16 },
+  container: { flex: 1, backgroundColor: "#f8fafd", padding: 16 },
   header: { fontSize: 22, fontWeight: "700", marginBottom: 16, color: "#111" },
   dateCard: {
     flex: 1,

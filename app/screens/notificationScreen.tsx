@@ -295,7 +295,7 @@ export default function NotiScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { backgroundColor: "#F2F2F2", padding: 16, flex: 1 },
+  content: { backgroundColor: "#f8fafd", padding: 16, flex: 1 },
   headerContainer: {
     backgroundColor: "#FFF8DE",
     height: 122,
