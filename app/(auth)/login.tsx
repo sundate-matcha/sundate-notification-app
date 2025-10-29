@@ -101,11 +101,7 @@ export default function LoginScreen() {
         body: JSON.stringify(payload),
       });
 
-      const text = await res.text();
-      let data: any = text;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {}
+      const data = await res.json();
 
       if (res.status === 400 && data?.error === "Validation failed") {
         throw new Error("Vui lòng nhập đầy đủ thông tin đăng nhập.");
