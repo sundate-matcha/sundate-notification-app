@@ -7,14 +7,19 @@
     "icon": "./assets/images/Logo.png",
     "scheme": "sundatenotificationapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "extra": {
       "eas": {
-        "projectId": "sundate-mobile-app"
-      }
+        "projectId": "a21500e8-e570-4551-9351-6bf07b02e2eb"
+      },
+      "router": {}
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sundate.sundatenotificationapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -42,6 +47,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "sundate"
   }
 }
