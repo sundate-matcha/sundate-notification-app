@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
+import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { NOTIFICATION_CONFIG } from "../config/notificationConfig";
 import { sseService } from "./sseService";
@@ -69,19 +70,29 @@ class NotificationService {
 
   private async loadUserId(): Promise<void> {
     try {
-      // Add a small delay to ensure AsyncStorage is initialized
+      // Add a small delay to ensure storage is initialized
       await new Promise((resolve) => setTimeout(resolve, 100));
-      this.userId = await AsyncStorage.getItem(NOTIFICATION_CONFIG.STORAGE_KEYS.USER_ID);
+      
+      // Get user object from SecureStore (sundate_user contains the full user object with id)
+      try {
+        const userJson = await SecureStore.getItemAsync("sundate_user");
+        if (userJson) {
+          const user = JSON.parse(userJson);
+          this.userId = user?.id || null;
+          if (this.userId) {
+            console.log("UserId loaded from SecureStore user object");
+            return;
+          }
+        }
+      } catch (error) {
+        console.debug("Could not load userId from SecureStore:", error);
+      }
     } catch (error: any) {
       // Silently handle errors - userId can be set later
-      // Check if it's a TypeError about AsyncStorage internals
-      if (error?.message?.includes("Cannot read properties of undefined")) {
-        console.debug("AsyncStorage not fully initialized yet");
-        return;
-      }
+      console.debug("Error loading userId:", error);
     }
 
-    // Fallback for web if AsyncStorage failed
+    // Fallback for web if storage failed
     if (this.userId === null && Platform.OS === "web") {
       try {
         // @ts-ignore
@@ -94,27 +105,14 @@ class NotificationService {
 
   async setUserId(userId: string): Promise<void> {
     this.userId = userId;
-    try {
-      if (!AsyncStorage) {
-        // Fallback for web or if AsyncStorage not available
-        if (Platform.OS === "web") {
-          // @ts-ignore
-          global.__userId = userId;
-        }
-        return;
-      }
-
-      await AsyncStorage.setItem(NOTIFICATION_CONFIG.STORAGE_KEYS.USER_ID, userId);
-    } catch (error) {
-      console.warn("Error setting user ID in AsyncStorage:", error);
-      // Fallback for web
-      if (Platform.OS === "web") {
-        try {
-          // @ts-ignore
-          global.__userId = userId;
-        } catch (fallbackError) {
-          console.debug("Fallback user ID setting also failed:", fallbackError);
-        }
+    
+    // Set web fallback if needed (userId is stored in SecureStore as part of sundate_user object)
+    if (Platform.OS === "web") {
+      try {
+        // @ts-ignore
+        global.__userId = userId;
+      } catch (error) {
+        console.debug("Could not set web fallback userId:", error);
       }
     }
   }
@@ -196,8 +194,75 @@ class NotificationService {
   }
 
   /**
-   * Initialize push notifications on app startup
-   * Checks if token exists, if not requests permissions and registers token
+   * Request notification permissions only (called on app startup)
+   * Does NOT register push token - that happens after login
+   */
+  async requestPermissionsOnly(): Promise<boolean> {
+    try {
+      console.log("Checking notification permissions...");
+
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== "granted") {
+        console.log("Permissions not granted yet, requesting...");
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== "granted") {
+        console.warn("Notification permissions not granted");
+        return false;
+      }
+
+      console.log("Notification permissions granted");
+      return true;
+    } catch (error) {
+      console.error("Error requesting notification permissions:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Register push token with userId after user logs in
+   * This should be called after successful login
+   */
+  async registerPushTokenWithUserId(userId: string): Promise<boolean> {
+    try {
+      console.log("Registering push token for userId:", userId);
+
+      // Set the userId first
+      await this.setUserId(userId);
+
+      // Check permissions
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") {
+        console.warn("Cannot register push token: permissions not granted");
+        // Request permissions if not granted
+        const permissionGranted = await this.requestPermissionsOnly();
+        if (!permissionGranted) {
+          return false;
+        }
+      }
+
+      // Get and register push token
+      const token = await this.getPushToken();
+      if (token) {
+        await this.registerPushToken(token);
+        console.log("Push token registered successfully with userId");
+        return true;
+      } else {
+        console.warn("Failed to get push token");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error registering push token with userId:", error);
+      return false;
+    }
+  }
+
+  /**
+   * @deprecated Use requestPermissionsOnly() on startup and registerPushTokenWithUserId() after login
    */
   async initializePushNotifications(): Promise<boolean> {
     try {

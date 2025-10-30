@@ -53,13 +53,13 @@ Notifications.setNotificationHandler({
 
 export default function RootLayout() {
   useEffect(() => {
-    // Initialize notification permissions when app starts
-    // This will check if a push token exists, and if not, request permissions and register it
+    // Request notification permissions on app startup
+    // Push token will be registered after user logs in with their userId
     const initializeNotifications = async () => {
       try {
-        await notificationService.initializePushNotifications();
+        await notificationService.requestPermissionsOnly();
       } catch (error) {
-        console.error("Failed to initialize notifications:", error);
+        console.error("Failed to request notification permissions:", error);
       }
     };
 

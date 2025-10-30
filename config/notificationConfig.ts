@@ -31,7 +31,6 @@ export const NOTIFICATION_CONFIG = {
   
   // Storage Keys
   STORAGE_KEYS: {
-    USER_ID: 'userId',
     PUSH_TOKEN: 'pushToken',
     LAST_NOTIFICATION_CHECK: 'lastNotificationCheck',
     NOTIFICATION_SETTINGS: 'notificationSettings',

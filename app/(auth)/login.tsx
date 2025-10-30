@@ -19,6 +19,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { notificationService } from "../../services/notificationService";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -123,14 +124,19 @@ export default function LoginScreen() {
         );
       }
 
-      // ✅ Đăng nhập thành công
-      const token =
-        data?.token ||
-        data?.jwt ||
-        data?.accessToken ||
-        data?.data?.token ||
-        "";
+      if (data.user) {
+        await SecureStore.setItemAsync("sundate_user", JSON.stringify(data.user));
+        console.log("[Login] user info saved");
+      }
 
+      // Lưu token (thử các tên trường phổ biến)???
+      // const token =
+      //   data?.token ||
+      //   data?.jwt ||
+      //   data?.accessToken ||
+      //   data?.data?.token ||
+      //   "";
+      const token = data.token;
       if (token) {
         await SecureStore.setItemAsync("sundate_token", token);
       }
@@ -148,6 +154,19 @@ export default function LoginScreen() {
         await SecureStore.setItemAsync("sundate_fullName", fullName);
       }
 
+      // Register push token with userId after successful login
+      const userId = data?.user?.id;
+      if (userId) {
+        try {
+          console.log("[Login] Registering push token for userId:", userId);
+          await notificationService.registerPushTokenWithUserId(userId);
+          console.log("[Login] Push token registered successfully");
+        } catch (error) {
+          console.error("[Login] Failed to register push token:", error);
+          // Don't block login flow if push notification registration fails
+        }
+      }
+
       setModalType("success");
       setModalMessage("Đăng nhập thành công!");
       setTimeout(() => {
@@ -155,8 +174,9 @@ export default function LoginScreen() {
         closeModal();
         router.replace("/(tabs)/overview");
       }, 1500);
+      router.push("/(tabs)/overview");
     } catch (err: any) {
-      console.error("[Login] error:", err);
+      console.error("[Login] network/error:", err);
       setModalType("error");
       setModalMessage(err.message || "Lỗi kết nối. Vui lòng thử lại.");
     } finally {
