@@ -30,7 +30,7 @@ app/services/
 ├── notificationService.ts    # Main notification service
 ├── sseService.ts            # Server-Sent Events implementation
 └── config/
-    └── notificationConfig.ts # Configuration constants
+    └── notification.config.ts # Configuration constants
 ```
 
 ### Hooks
@@ -81,7 +81,6 @@ EXPO_PUBLIC_API_URL=http://localhost:3000/api
 ### Notification Settings
 ```typescript
 const NOTIFICATION_CONFIG = {
-  API_BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api',
   POLLING_INTERVAL: 30000, // 30 seconds
   DEFAULT_PAGE_SIZE: 20,
   // ... more settings

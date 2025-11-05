@@ -56,7 +56,7 @@ startListeningForUpdates(
 
 ---
 
-### 3. **Configuration (`app/config/notificationConfig.ts`)**
+### 3. **Configuration (`app/config/notification.config.ts`)**
 
 #### New Settings
 ```typescript
@@ -224,7 +224,7 @@ notificationService.startListeningForUpdates(
 Update your environment/config:
 
 ```typescript
-// app/config/notificationConfig.ts
+// app/config/notification.config.ts
 export const NOTIFICATION_CONFIG = {
   API_BASE_URL: "https://sundate.justdemo.work/api", // Ensure this is correct
   SSE_ENABLED: true, // Enable SSE
@@ -255,7 +255,7 @@ The app will automatically fall back to polling.
 ### Core Files
 - ✅ `app/services/sseService.ts` - Updated to new API Gateway spec
 - ✅ `app/services/notificationService.ts` - Enhanced event handling
-- ✅ `app/config/notificationConfig.ts` - Added SSE configuration
+- ✅ `app/config/notification.config.ts` - Added SSE configuration
 
 ### New Files
 - ✅ `app/docs/SSE_USAGE_GUIDE.md` - Developer guide
@@ -273,7 +273,7 @@ The app will automatically fall back to polling.
 1. **SSE Specification**: `.helper-files/SSE_IMPLEMENTATION.md`
 2. **Usage Guide**: `app/docs/SSE_USAGE_GUIDE.md`
 3. **API Documentation**: API Gateway SSE endpoints
-4. **Configuration**: `app/config/notificationConfig.ts`
+4. **Configuration**: `app/config/notification.config.ts`
 
 ---
 

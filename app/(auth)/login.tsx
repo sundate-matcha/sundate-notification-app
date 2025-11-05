@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/config/general.config";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -12,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,9 +32,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [resultModalVisible, setResultModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"loading" | "success" | "error">(
-    "loading"
-  );
+  const [modalType, setModalType] = useState<"loading" | "success" | "error">("loading");
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -96,7 +96,7 @@ export default function LoginScreen() {
 
     try {
       const payload = { identifier: username, password };
-      const res = await fetch("https://sundate.justdemo.work/api/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -113,20 +113,11 @@ export default function LoginScreen() {
       }
 
       if (res.status === 401 && data?.message === "Account is deactivated") {
-        throw new Error(
-          "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên."
-        );
+        throw new Error("Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
       }
 
       if (!res.ok) {
-        throw new Error(
-          data?.message || "Đăng nhập thất bại. Vui lòng thử lại."
-        );
-      }
-
-      if (data.user) {
-        await SecureStore.setItemAsync("sundate_user", JSON.stringify(data.user));
-        console.log("[Login] user info saved");
+        throw new Error(data?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
       }
 
       // Lưu token (thử các tên trường phổ biến)???
@@ -149,18 +140,14 @@ export default function LoginScreen() {
         data?.fullName ||
         data?.name ||
         "";
+      await SecureStore.setItemAsync("sundate_fullName", fullName);
 
-      if (fullName) {
-        await SecureStore.setItemAsync("sundate_fullName", fullName);
-      }
-
-      // Register push token with userId after successful login
       const userId = data?.user?.id;
       if (userId) {
         try {
-          console.log("[Login] Registering push token for userId:", userId);
+          await SecureStore.setItemAsync("sundate_user_id", userId);
           await notificationService.registerPushTokenWithUserId(userId);
-          console.log("[Login] Push token registered successfully");
+          console.log("[Login] Push token registered successfully for userId:", userId);
         } catch (error) {
           console.error("[Login] Failed to register push token:", error);
           // Don't block login flow if push notification registration fails
@@ -185,20 +172,23 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
-      {/* Logo */}
-      <Image
-        source={require("../../assets/images/Symbol.png")}
-        style={styles.logo1}
-      />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <StatusBar style="dark" />
+        {/* Back Button */}
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#831B1B" />
+          <Text style={styles.backButtonText}>Quay lại</Text>
+        </TouchableOpacity>
+        {/* Logo */}
+        <Image source={require("../../assets/images/Symbol.png")} style={styles.logo1} />
 
       <Text style={styles.title}>Reservation and Order Management</Text>
       <Text style={styles.subtitle}>Sundate - matcha holic shelter</Text>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.signInButton} onPress={openModal}>
-          <Text style={styles.signInText}>Log In</Text>
+          <Text style={styles.signInText}>Đăng Nhập</Text>
         </TouchableOpacity>
         {/* <TouchableOpacity style={styles.signUpButton}>
           <Text style={styles.signUpText}>Register</Text>
@@ -210,20 +200,13 @@ export default function LoginScreen() {
         <TouchableWithoutFeedback onPress={closeModal}>
           <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
             <TouchableWithoutFeedback>
-              <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-              >
+              <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
                 <Animated.View
-                  style={[
-                    styles.bottomSheet,
-                    { transform: [{ translateY: slideAnim }] },
-                  ]}
+                  style={[styles.bottomSheet, { transform: [{ translateY: slideAnim }] }]}
                 >
-                  <Text style={styles.overlayTitle}>Log In</Text>
+                  <Text style={styles.overlayTitle}>Đăng Nhập</Text>
                   <View>
-                    <Text style={styles.inputLabel}>
-                      Email hoặc tên đăng nhập
-                    </Text>
+                    <Text style={styles.inputLabel}>Tên đăng nhập hoặc Email</Text>
                     <TextInput
                       style={styles.input}
                       value={username}
@@ -247,25 +230,21 @@ export default function LoginScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.signInBtn,
-                      loading ? { opacity: 0.7 } : null,
-                    ]}
-                    onPress={handleLogin}
-                    disabled={loading}
-                  >
-                    <Text style={styles.signInText2}>
-                      {loading ? "Đang đăng nhập..." : "Log In"}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                      style={[styles.signInBtn, loading ? { opacity: 0.7 } : null]}
+                      onPress={handleLogin}
+                      disabled={loading}
+                    >
+                      <Text style={styles.signInText2}>
+                        {loading ? "Đang xử lý..." : "Đăng nhập"}
+                      </Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={closeModal}
-                  >
-                    <Text style={styles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
+                      <Text style={styles.cancelText}>Huỷ bỏ</Text>
+                    </TouchableOpacity>
+                  </View>
                 </Animated.View>
               </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
@@ -285,22 +264,14 @@ export default function LoginScreen() {
 
             {modalType === "success" && (
               <>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={60}
-                  color="#4CAF50"
-                />
+                <Ionicons name="checkmark-circle-outline" size={60} color="#4CAF50" />
                 <Text style={styles.resultText}>{modalMessage}</Text>
               </>
             )}
 
             {modalType === "error" && (
               <>
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={60}
-                  color="#E52424"
-                />
+                <Ionicons name="alert-circle-outline" size={60} color="#E52424" />
                 <Text style={styles.resultText}>{modalMessage}</Text>
                 <TouchableOpacity
                   style={styles.retryBtn}
@@ -316,16 +287,35 @@ export default function LoginScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#FFF8DE",
+  },
   container: {
     flex: 1,
     backgroundColor: "#FFF8DE",
     alignItems: "center",
     justifyContent: "center",
+  },
+  backButton: {
+    position: "absolute",
+    top: 10,
+    left: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  backButtonText: {
+    color: "#831B1B",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 5,
   },
   logo1: {
     width: 250,

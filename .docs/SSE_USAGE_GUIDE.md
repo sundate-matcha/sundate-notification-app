@@ -136,7 +136,7 @@ function NotificationScreen() {
 
 ## 🔧 Configuration
 
-All SSE settings are in `app/config/notificationConfig.ts`:
+All SSE settings are in `app/config/notification.config.ts`:
 
 ```typescript
 export const NOTIFICATION_CONFIG = {
@@ -442,7 +442,7 @@ export default MyNotificationScreen;
 - `app/services/sseService.ts` - Core SSE implementation
 - `app/services/notificationService.ts` - High-level notification service
 - `app/hooks/useNotifications.ts` - React hook for notifications
-- `app/config/notificationConfig.ts` - Configuration settings
+- `app/config/notification.config.ts` - Configuration settings
 - `.helper-files/SSE_IMPLEMENTATION.md` - API Gateway SSE documentation
 
 ---

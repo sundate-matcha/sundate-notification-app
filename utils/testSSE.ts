@@ -1,11 +1,12 @@
 /**
  * SSE Testing Utility
- * 
+ *
  * Helper functions to test and debug Server-Sent Events connections
  * in the Sundate Notification App.
  */
 
-import { NOTIFICATION_CONFIG } from '../config/notificationConfig';
+import { API_BASE_URL } from '@/config/general.config';
+import { NOTIFICATION_CONFIG } from '../config/notification.config';
 import { sseService } from '../services/sseService';
 
 export interface SSETestResult {
@@ -81,7 +82,7 @@ export async function testSSEConnection(
       if (!connectionEstablished && eventsReceived === 0) {
         const isConnected = sseService.getConnectionStatus();
         console.log('SSE Test: Connection status after 2s:', isConnected);
-        
+
         if (isConnected) {
           cleanup();
           resolve({
@@ -221,9 +222,7 @@ export async function testReconnection(
 /**
  * Test admin mode (no userId)
  */
-export async function testAdminMode(
-  timeoutMs: number = 10000
-): Promise<SSETestResult> {
+export async function testAdminMode(timeoutMs: number = 10000): Promise<SSETestResult> {
   return testSSEConnection(null, timeoutMs);
 }
 
@@ -265,8 +264,7 @@ export async function testReservationFiltering(
         console.log('SSE Test (Reservation): Event received', data);
 
         // Check if event is related to the reservation
-        if (data.data?.reservation?.id === reservationId || 
-            data.data?.reservationId === reservationId) {
+        if (data.data?.reservation?.id === reservationId || data.data?.reservationId === reservationId) {
           relevantEvents++;
         }
       },
@@ -300,22 +298,18 @@ export async function runAllSSETests(userId: string = 'test-user'): Promise<Reco
   console.log(`✅ Result: ${results.basicConnection.message}\n`);
 
   // Small delay between tests
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   // Test 2: Admin Mode
   console.log('Test 2: Admin Mode');
   results.adminMode = await testAdminMode(5000);
   console.log(`✅ Result: ${results.adminMode.message}\n`);
 
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   // Test 3: Event Filtering
   console.log('Test 3: Event Filtering');
-  results.eventFiltering = await testEventFiltering(
-    userId,
-    ['notification_created', 'reservation_created'],
-    5000
-  );
+  results.eventFiltering = await testEventFiltering(userId, ['notification_created', 'reservation_created'], 5000);
   console.log(`✅ Result: ${results.eventFiltering.message}\n`);
 
   // Print summary
@@ -335,7 +329,7 @@ export async function runAllSSETests(userId: string = 'test-user'): Promise<Reco
  */
 export function monitorSSEConnection(intervalMs: number = 2000): () => void {
   console.log('🔍 Monitoring SSE connection...');
-  
+
   const interval = setInterval(() => {
     const isConnected = sseService.getConnectionStatus();
     const status = isConnected ? '🟢 Connected' : '🔴 Disconnected';
@@ -355,13 +349,13 @@ export function monitorSSEConnection(intervalMs: number = 2000): () => void {
 export function logSSEConfiguration(): void {
   console.log('⚙️ SSE Configuration:');
   console.log('─'.repeat(50));
-  console.log(`API Base URL: ${NOTIFICATION_CONFIG.API_BASE_URL}`);
-  console.log(`SSE Enabled: ${NOTIFICATION_CONFIG.SSE_ENABLED}`);
-  console.log(`Reconnect Interval: ${NOTIFICATION_CONFIG.SSE_RECONNECT_INTERVAL}ms`);
-  console.log(`Max Reconnect Attempts: ${NOTIFICATION_CONFIG.SSE_MAX_RECONNECT_ATTEMPTS}`);
+  console.log(`API Base URL: ${API_BASE_URL}`);
+  console.log(`SSE Enabled: ${true}`);
+  console.log(`Reconnect Interval: ${5000}ms`);
+  console.log(`Max Reconnect Attempts: ${3}`);
   console.log(`Polling Interval (fallback): ${NOTIFICATION_CONFIG.POLLING_INTERVAL}ms`);
   console.log('\n📡 Event Types:');
-  Object.entries(NOTIFICATION_CONFIG.SSE_EVENT_TYPES).forEach(([key, value]) => {
+  Object.entries(NOTIFICATION_CONFIG.NOTIFICATION_TYPES).forEach(([key, value]) => {
     console.log(`  - ${key}: ${value}`);
   });
   console.log('─'.repeat(50));
@@ -369,5 +363,3 @@ export function logSSEConfiguration(): void {
 
 // Export convenience test runner for quick testing
 export const quickTest = () => runAllSSETests('test-user');
-
-

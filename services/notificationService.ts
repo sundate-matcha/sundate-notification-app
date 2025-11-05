@@ -1,9 +1,10 @@
+import { API_BASE_URL } from "@/config/general.config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import { NOTIFICATION_CONFIG } from "../config/notificationConfig";
+import { NOTIFICATION_CONFIG } from "../config/notification.config";
 import { sseService } from "./sseService";
 
 // Configure notification behavior
@@ -60,7 +61,7 @@ class NotificationService {
 
   constructor() {
     // In production, this should come from environment variables
-    this.baseUrl = `${NOTIFICATION_CONFIG.API_BASE_URL}/notifications`;
+    this.baseUrl = `${API_BASE_URL}/notifications`;
     // Start loading userId asynchronously - don't await it
     // This prevents blocking and errors during initialization
     this.loadUserId().catch(() => {
