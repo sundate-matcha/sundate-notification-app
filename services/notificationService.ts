@@ -229,25 +229,66 @@ class NotificationService {
    * This should be called after successful login
    */
   async registerPushTokenWithUserId(userId: string): Promise<boolean> {
+    // Skip on web platform
+    if (Platform.OS === "web") {
+      console.log("Skipping push token registration on web platform");
+      return false;
+    }
+
     try {
       console.log("Registering push token for userId:", userId);
 
-      // Set the userId first
+      // Set the userId first (synchronous operation, no timeout needed)
       await this.setUserId(userId);
 
-      // Check permissions
-      const { status } = await Notifications.getPermissionsAsync();
+      // Check permissions with timeout
+      const permissionsPromise = Notifications.getPermissionsAsync();
+      const permissionsTimeout = new Promise<{ status: string }>((_, reject) => {
+        setTimeout(() => reject(new Error("getPermissionsAsync timeout")), 5000);
+      });
+
+      let status: string;
+      try {
+        const result = await Promise.race([permissionsPromise, permissionsTimeout]) as { status: string };
+        status = result.status;
+      } catch (error) {
+        console.warn("Error checking permissions (timeout or error):", error);
+        return false;
+      }
+
       if (status !== "granted") {
         console.warn("Cannot register push token: permissions not granted");
-        // Request permissions if not granted
-        const permissionGranted = await this.requestPermissionsOnly();
-        if (!permissionGranted) {
+        // Request permissions if not granted (with timeout)
+        const requestPermissionsPromise = this.requestPermissionsOnly();
+        const requestPermissionsTimeout = new Promise<boolean>((_, reject) => {
+          setTimeout(() => reject(new Error("requestPermissionsOnly timeout")), 10000);
+        });
+
+        try {
+          const permissionGranted = await Promise.race([requestPermissionsPromise, requestPermissionsTimeout]) as boolean;
+          if (!permissionGranted) {
+            return false;
+          }
+        } catch (error) {
+          console.warn("Error requesting permissions (timeout or error):", error);
           return false;
         }
       }
 
-      // Get and register push token
-      const token = await this.getPushToken();
+      // Get push token with timeout
+      const getTokenPromise = this.getPushToken();
+      const getTokenTimeout = new Promise<string | null>((_, reject) => {
+        setTimeout(() => reject(new Error("getPushToken timeout")), 15000);
+      });
+
+      let token: string | null;
+      try {
+        token = await Promise.race([getTokenPromise, getTokenTimeout]) as string | null;
+      } catch (error) {
+        console.warn("Error getting push token (timeout or error):", error);
+        return false;
+      }
+
       if (token) {
         await this.registerPushToken(token);
         console.log("Push token registered successfully with userId");
@@ -350,23 +391,150 @@ class NotificationService {
     try {
       console.log("Registering push token:", token);
       
-      // Send token to backend
-      const response = await fetch(`${this.baseUrl}/register-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, userId: this.userId })
-      });
+      // Send token to backend with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      if (!response.ok) {
-        throw new Error(`Failed to register token: ${response.status}`);
+      try {
+        const response = await fetch(`${this.baseUrl}/register-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, userId: this.userId }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Failed to register token: ${response.status}`);
+        }
+
+        // Store token locally after successful registration
+        await AsyncStorage.setItem(NOTIFICATION_CONFIG.STORAGE_KEYS.PUSH_TOKEN, token);
+        console.log("Push token registered successfully");
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error("Push token registration timed out after 10 seconds");
+        }
+        throw fetchError;
       }
-
-      // Store token locally after successful registration
-      await AsyncStorage.setItem(NOTIFICATION_CONFIG.STORAGE_KEYS.PUSH_TOKEN, token);
-      console.log("Push token registered successfully");
     } catch (error) {
       console.error("Error registering push token:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Validate if the stored push token is still registered on the server
+   * Returns true if token is valid, false otherwise
+   */
+  async validatePushTokenOnStartup(): Promise<boolean> {
+    // Skip on web platform
+    if (Platform.OS === "web") {
+      return false;
+    }
+
+    try {
+      // Check if user is logged in (with timeout)
+      const getUserIdPromise = SecureStore.getItemAsync("sundate_user_id");
+      const getUserIdTimeout = new Promise<string | null>((_, reject) => {
+        setTimeout(() => reject(new Error("getUserId timeout")), 2000);
+      });
+
+      let userId: string | null;
+      try {
+        userId = await Promise.race([getUserIdPromise, getUserIdTimeout]) as string | null;
+      } catch (error) {
+        console.warn("Error getting userId for validation:", error);
+        return false;
+      }
+
+      if (!userId) {
+        console.log("No userId found, skipping push token validation");
+        return false;
+      }
+
+      // Set userId in service
+      await this.setUserId(userId);
+
+      // Get stored token (with timeout)
+      const getStoredTokenPromise = this.getStoredPushToken();
+      const getStoredTokenTimeout = new Promise<string | null>((_, reject) => {
+        setTimeout(() => reject(new Error("getStoredToken timeout")), 2000);
+      });
+
+      let storedToken: string | null;
+      try {
+        storedToken = await Promise.race([getStoredTokenPromise, getStoredTokenTimeout]) as string | null;
+      } catch (error) {
+        console.warn("Error getting stored token:", error);
+        return false;
+      }
+
+      if (!storedToken) {
+        console.log("No stored push token found");
+        return false;
+      }
+
+      // Check if permissions are still granted (with timeout)
+      const getPermissionsPromise = Notifications.getPermissionsAsync();
+      const getPermissionsTimeout = new Promise<{ status: string }>((_, reject) => {
+        setTimeout(() => reject(new Error("getPermissionsAsync timeout")), 3000);
+      });
+
+      let status: string;
+      try {
+        const result = await Promise.race([getPermissionsPromise, getPermissionsTimeout]) as { status: string };
+        status = result.status;
+      } catch (error) {
+        console.warn("Error checking permissions for validation:", error);
+        return false;
+      }
+
+      if (status !== "granted") {
+        console.log("Notification permissions not granted, token validation skipped");
+        return false;
+      }
+
+      // Get current device token (with timeout)
+      const getCurrentTokenPromise = this.getPushToken();
+      const getCurrentTokenTimeout = new Promise<string | null>((_, reject) => {
+        setTimeout(() => reject(new Error("getPushToken timeout")), 10000);
+      });
+
+      let currentToken: string | null;
+      try {
+        currentToken = await Promise.race([getCurrentTokenPromise, getCurrentTokenTimeout]) as string | null;
+      } catch (error) {
+        console.warn("Error getting current push token for validation:", error);
+        return false;
+      }
+
+      if (!currentToken) {
+        console.log("Failed to get current push token");
+        return false;
+      }
+
+      // If token changed, re-register (with timeout protection from registerPushToken)
+      if (currentToken !== storedToken) {
+        console.log("Push token changed, re-registering...");
+        try {
+          await this.registerPushToken(currentToken);
+          return true;
+        } catch (error) {
+          console.warn("Error re-registering push token:", error);
+          return false;
+        }
+      }
+
+      // Validate token with backend (optional - check if server knows about this token)
+      // For now, we'll just check if token exists and matches
+      console.log("Push token validated successfully");
+      return true;
+    } catch (error) {
+      console.error("Error validating push token on startup:", error);
+      return false;
     }
   }
 

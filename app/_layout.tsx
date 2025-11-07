@@ -57,7 +57,17 @@ export default function RootLayout() {
     // Push token will be registered after user logs in with their userId
     const initializeNotifications = async () => {
       try {
-        await notificationService.requestPermissionsOnly();
+        // Skip on web platform
+        if (Platform.OS !== "web") {
+          await notificationService.requestPermissionsOnly();
+          
+          // Validate push token on startup if user is logged in
+          try {
+            await notificationService.validatePushTokenOnStartup();
+          } catch (error) {
+            console.error("Failed to validate push token on startup:", error);
+          }
+        }
       } catch (error) {
         console.error("Failed to request notification permissions:", error);
       }

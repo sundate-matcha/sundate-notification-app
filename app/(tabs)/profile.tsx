@@ -1,15 +1,8 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -19,26 +12,23 @@ export default function ProfileScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const storedName = await SecureStore.getItemAsync("sundate_fullName");
+        const storedName = await SecureStore.getItemAsync('sundate_fullName');
         if (storedName) {
           setFullName(storedName);
           setLoading(false);
           return;
         }
 
-        const token = await SecureStore.getItemAsync("sundate_token");
+        const token = await SecureStore.getItemAsync('sundate_token');
         if (!token) {
           setLoading(false);
           return;
         }
 
         // Gọi đúng endpoint /api/auth/profile
-        const res = await fetch(
-          "https://sundate.justdemo.work/api/auth/profile",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = await fetch('https://sundate.justdemo.work/api/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         const text = await res.text();
         let data: any = text;
@@ -52,22 +42,20 @@ export default function ProfileScreen() {
           // server trả { user }
           const user = data?.user || {};
           const name =
-            (user.firstName &&
-              user.lastName &&
-              `${user.firstName} ${user.lastName}`) ||
+            (user.firstName && user.lastName && `${user.firstName} ${user.lastName}`) ||
             user.fullName ||
             user.name ||
             user.username ||
             null;
           if (name) {
             setFullName(name);
-            await SecureStore.setItemAsync("sundate_fullName", name);
+            await SecureStore.setItemAsync('sundate_fullName', name);
           }
         } else {
-          console.warn("[Profile] /auth/profile failed", res.status, data);
+          console.warn('[Profile] /auth/profile failed', res.status, data);
         }
       } catch (err) {
-        console.error("[Profile] error loading profile:", err);
+        console.error('[Profile] error loading profile:', err);
       } finally {
         setLoading(false);
       }
@@ -75,35 +63,31 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    await SecureStore.deleteItemAsync("sundate_token");
-    await SecureStore.deleteItemAsync("sundate_fullName");
-    router.push("/(auth)/login");
+    await Promise.all([
+      SecureStore.deleteItemAsync('sundate_token'),
+      SecureStore.deleteItemAsync('sundate_fullName'),
+      SecureStore.deleteItemAsync('sundate_user_id'),
+    ]);
+    router.push('/(auth)/login');
   };
 
   return (
     <View style={styles.container}>
       {/* Card Profile */}
       <View style={styles.card}>
-        <Image
-          source={require("../../assets/images/Logo.png")}
-          style={styles.avatar}
-        />
-        {loading ? (
-          <ActivityIndicator />
-        ) : (
-          <Text style={styles.name}>{fullName || "Admin"}</Text>
-        )}
+        <Image source={require('../../assets/images/Logo.png')} style={styles.avatar} />
+        {loading ? <ActivityIndicator /> : <Text style={styles.name}>{fullName}</Text>}
       </View>
 
       {/* Nút đổi mật khẩu */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.button}>
+        <TouchableOpacity style={{ ...styles.button, borderWidth: 1, borderColor: '#0568FB' }}>
           <Ionicons name="key-outline" size={20} color="#0568FB" />
           <Text style={styles.buttonText1}>Đổi mật khẩu</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#E52424" />
+        <TouchableOpacity style={{ ...styles.button, backgroundColor: '#E52424' }} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="#fff" />
           <Text style={styles.buttonText2}>Đăng xuất</Text>
         </TouchableOpacity>
       </View>
@@ -114,21 +98,21 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafd",
-    alignItems: "center",
+    backgroundColor: '#f8fafd',
+    alignItems: 'center',
     paddingTop: 40,
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     padding: 20,
     borderRadius: 16,
-    alignItems: "center",
-    width: "90%",
-    shadowColor: "#000",
+    alignItems: 'center',
+    width: '90%',
+    shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   avatar: {
     width: 100,
@@ -138,41 +122,41 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 8,
   },
   info: {
     fontSize: 16,
-    color: "#555",
+    color: '#555',
     marginBottom: 4,
   },
   button: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
     marginBottom: 15,
-    width: "90%",
-    justifyContent: "center",
+    width: '90%',
+    justifyContent: 'center',
   },
   buttonText1: {
-    color: "#0568FB",
+    color: '#0568FB',
     fontSize: 16,
     marginLeft: 8,
-    fontWeight: "500",
+    fontWeight: '500',
   },
   buttonText2: {
-    color: "#E52424",
+    color: '#fff',
     fontSize: 16,
     marginLeft: 8,
-    fontWeight: "500",
+    fontWeight: '600',
   },
   footer: {
-    width: "100%",
-    alignItems: "center",
-    position: "absolute",
-    bottom: 30,
+    width: '100%',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 20,
   },
 });
