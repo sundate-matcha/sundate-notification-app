@@ -34,7 +34,7 @@ export class SSEService {
       return;
     }
 
-    let url = `${this.baseUrl}/api/notifications/stream`;
+    let url = `${this.baseUrl}/api/events`;
 
     // Handle null userId (admin mode) or regular userId
     if (userId === null) {
@@ -73,33 +73,8 @@ export class SSEService {
         this.attemptReconnect(userId, onMessage, onError, eventTypes);
       };
 
-      // Listen for specific event types
-      this.eventSource.addEventListener('new-notification', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          onMessage({ type: 'new-notification', data });
-        } catch (error) {
-          console.error('Error parsing new-notification event:', error);
-        }
-      });
-
-      this.eventSource.addEventListener('notification-updated', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          onMessage({ type: 'notification-updated', data });
-        } catch (error) {
-          console.error('Error parsing notification-updated event:', error);
-        }
-      });
-
-      this.eventSource.addEventListener('notification-deleted', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          onMessage({ type: 'notification-deleted', data });
-        } catch (error) {
-          console.error('Error parsing notification-deleted event:', error);
-        }
-      });
+      // The main onmessage handler will process all event types from the backend
+      // Backend sends events like: reservation_created, reservation_confirmed, notification_created, etc.
     } catch (error) {
       console.error('Error creating SSE connection:', error);
       if (onError) {
@@ -168,7 +143,7 @@ export class SSEService {
             });
 
             newNotifications.forEach((notification: any) => {
-              onUpdate({ type: 'new-notification', data: notification });
+              onUpdate({ type: "notification_created", data: { notification } });
             });
 
             try {

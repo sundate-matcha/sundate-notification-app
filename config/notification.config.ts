@@ -1,5 +1,11 @@
 // Notification configuration
+// API URL is loaded from environment variables
+// For local development: use .env.staging or .env.production files
+// For EAS builds: set in eas.json env section
 export const NOTIFICATION_CONFIG = {
+  // API Configuration - loaded from EXPO_PUBLIC_API_URL environment variable
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_URL || "https://sundate.justdemo.work/api",
+  
   // Polling Configuration
   POLLING_INTERVAL: 60000, // 60 seconds - increased to reduce server load
 
@@ -41,6 +47,11 @@ export const NOTIFICATION_CONFIG = {
     enableBadge: true,
     pollingEnabled: true,
   },
+  
+  // SSE
+  SSE_ENABLED: true,
+  SSE_RECONNECT_INTERVAL: 5000,
+  SSE_MAX_RECONNECT_ATTEMPTS: 10,
 };
 
 // Type definitions for better TypeScript support

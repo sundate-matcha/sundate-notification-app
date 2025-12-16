@@ -35,7 +35,8 @@ export function useNotifications(initialUserId?: string | null): UseNotification
   const lastLoadParamsRef = useRef<string>('');
 
   const loadNotifications = useCallback(async (page: number = 1, append: boolean = false) => {
-    if (!initialUserId) return;
+    // Allow loading notifications for admin users even without userId
+    if (!initialUserId && initialUserId !== null) return;
 
     // Create a unique key for this request
     const requestKey = `${page}-${append}-${currentFilter}`;
@@ -77,7 +78,8 @@ export function useNotifications(initialUserId?: string | null): UseNotification
   }, [initialUserId, currentFilter]);
 
   const loadUnreadCount = useCallback(async () => {
-    if (!initialUserId) return;
+    // Allow loading unread count for admin users even without userId
+    if (!initialUserId && initialUserId !== null) return;
 
     try {
       const count = await notificationService.getUnreadCount();
@@ -189,10 +191,13 @@ export function useNotifications(initialUserId?: string | null): UseNotification
   // Initialize notifications and permissions
   useEffect(() => {
     const initializeNotifications = async () => {
-      if (!initialUserId) return;
+      // Allow initialization for admin users even without userId
+      if (!initialUserId && initialUserId !== null) return;
 
-      // Set user ID in service
-      await notificationService.setUserId(initialUserId);
+      // Set user ID in service (can be null for admin)
+      if (initialUserId) {
+        await notificationService.setUserId(initialUserId);
+      }
 
       // Request notification permissions
       await notificationService.requestPermissions();
@@ -206,7 +211,8 @@ export function useNotifications(initialUserId?: string | null): UseNotification
 
   // Set up real-time updates
   useEffect(() => {
-    if (!initialUserId) return;
+    // Allow real-time updates for admin users even without userId
+    if (!initialUserId && initialUserId !== null) return;
 
     const handleNewNotification = (notification: NotificationData) => {
       setNotifications(prev => [notification, ...prev]);
@@ -231,8 +237,8 @@ export function useNotifications(initialUserId?: string | null): UseNotification
 
   // Reload when filter changes
   useEffect(() => {
-    if (initialUserId && currentFilter !== null) {
-      // Only load if we have a valid filter and user ID
+    if ((initialUserId || initialUserId === null) && currentFilter !== null) {
+      // Load if we have a valid filter and either a user ID or admin mode (null)
       loadNotifications(1, false);
     }
   }, [currentFilter, loadNotifications, initialUserId]);

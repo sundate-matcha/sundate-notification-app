@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
+import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { NOTIFICATION_CONFIG } from "../config/notification.config";
 import { sseService } from "./sseService";
@@ -61,12 +62,18 @@ class NotificationService {
 
   constructor() {
     // In production, this should come from environment variables
-    this.baseUrl = `${API_BASE_URL}/notifications`;
-    // Start loading userId asynchronously - don't await it
-    // This prevents blocking and errors during initialization
-    this.loadUserId().catch(() => {
-      // Silently fail - userId is optional and will be set later
-    });
+    this.baseUrl = `${NOTIFICATION_CONFIG.API_BASE_URL}/notifications`;
+    // Initialize userId loading without blocking constructor
+    this.initializeUserId();
+  }
+
+  private async initializeUserId(): Promise<void> {
+    try {
+      await this.loadUserId();
+    } catch (error) {
+      // Silently handle initialization errors
+      console.debug("Error during userId initialization:", error);
+    }
   }
 
   private async loadUserId(): Promise<void> {
@@ -238,8 +245,11 @@ class NotificationService {
     try {
       console.log("Registering push token for userId:", userId);
 
-      // Set the userId first (synchronous operation, no timeout needed)
+      // Set the userId first and ensure it's properly loaded
       await this.setUserId(userId);
+      
+      // Wait a bit to ensure userId is fully set
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check permissions with timeout
       const permissionsPromise = Notifications.getPermissionsAsync();
@@ -275,28 +285,31 @@ class NotificationService {
         }
       }
 
-      // Get push token with timeout
-      const getTokenPromise = this.getPushToken();
-      const getTokenTimeout = new Promise<string | null>((_, reject) => {
-        setTimeout(() => reject(new Error("getPushToken timeout")), 15000);
-      });
-
-      let token: string | null;
-      try {
-        token = await Promise.race([getTokenPromise, getTokenTimeout]) as string | null;
-      } catch (error) {
-        console.warn("Error getting push token (timeout or error):", error);
-        return false;
+      // Get and register push token with retry logic
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          const token = await this.getPushToken();
+          if (token) {
+            await this.registerPushToken(token);
+            console.log("Push token registered successfully with userId");
+            return true;
+          } else {
+            console.warn("Failed to get push token, retries left:", retries - 1);
+          }
+        } catch (error) {
+          console.warn("Error in token registration attempt, retries left:", retries - 1, error);
+        }
+        
+        retries--;
+        if (retries > 0) {
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-
-      if (token) {
-        await this.registerPushToken(token);
-        console.log("Push token registered successfully with userId");
-        return true;
-      } else {
-        console.warn("Failed to get push token");
-        return false;
-      }
+      
+      console.error("Failed to register push token after all retries");
+      return false;
     } catch (error) {
       console.error("Error registering push token with userId:", error);
       return false;
@@ -387,13 +400,43 @@ class NotificationService {
     }
   }
 
+  private async getDeviceId(): Promise<string> {
+    try {
+      // Try to get a unique device identifier
+      if (Device.osInternalBuildId) {
+        return Device.osInternalBuildId;
+      }
+      if (Device.osVersion) {
+        return `${Platform.OS}-${Device.osVersion}-${Date.now()}`;
+      }
+      // Fallback to a random ID stored locally
+      let deviceId = await AsyncStorage.getItem('deviceId');
+      if (!deviceId) {
+        deviceId = `${Platform.OS}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem('deviceId', deviceId);
+      }
+      return deviceId;
+    } catch (error) {
+      console.warn("Could not get device ID:", error);
+      return `${Platform.OS}-fallback-${Date.now()}`;
+    }
+  }
+
   private async registerPushToken(token: string): Promise<void> {
     try {
       console.log("Registering push token:", token);
       
-      // Send token to backend with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      // Send token to backend  
+      const response = await fetch(`${NOTIFICATION_CONFIG.API_BASE_URL}/push-tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token, 
+          deviceId: await this.getDeviceId(), 
+          platform: Platform.OS,
+          userId: this.userId 
+        })
+      });
 
       try {
         const response = await fetch(`${this.baseUrl}/register-token`, {
@@ -733,8 +776,10 @@ class NotificationService {
           // Handle notification events
           if (data.type === "notification_created") {
             const notification = data.data?.notification || data.data;
-            onUpdate(notification);
-            this.showLocalNotification(notification);
+            if (notification) {
+              onUpdate(notification);
+              this.showLocalNotification(notification);
+            }
           } else if (data.type === "notification_read") {
             // Optionally handle notification read events
             console.log("Notification marked as read:", data.data);
@@ -789,9 +834,9 @@ class NotificationService {
       return; // Prevent multiple polling instances
     }
 
-    // Cannot poll without userId
+    // Cannot poll without userId (admin mode should use SSE instead)
     if (!this.userId) {
-      console.warn("Cannot start polling: User ID not set");
+      console.warn("Cannot start polling: User ID not set (admin mode should use SSE)");
       return;
     }
 

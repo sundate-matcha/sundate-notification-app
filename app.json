@@ -8,6 +8,7 @@
     "scheme": "sundatenotificationapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "owner": "sundate",
     "extra": {
       "eas": {
         "projectId": "a21500e8-e570-4551-9351-6bf07b02e2eb"
@@ -17,6 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sundate.sundatenotificationapp",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -36,6 +38,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
       [
         "expo-splash-screen",
         {
@@ -48,7 +52,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "owner": "sundate"
+    }
   }
 }

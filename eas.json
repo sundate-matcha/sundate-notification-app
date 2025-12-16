@@ -3,12 +3,6 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "ios-simulator": {
-      "extends": "development",
-      "ios": {
-        "simulator": true
-      }
-    },
     "development": {
       "developmentClient": true,
       "distribution": "internal",
@@ -16,10 +10,24 @@
         "buildConfiguration": "Debug"
       }
     },
+    "testflight": {
+      "distribution": "store",
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "https://sundate.justdemo.work/api"
+      }
+    },
     "production": {
       "distribution": "store",
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://sundate.justdemo.work/api"
       }
     }
   },
