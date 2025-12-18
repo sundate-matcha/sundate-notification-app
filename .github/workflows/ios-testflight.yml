@@ -50,6 +50,7 @@ jobs:
 
       - name: Submit to TestFlight
         run: |
-          eas submit -p ios --latest --non-interactive
+          eas submit -p ios --profile testflight --latest      
+        # eas submit -p ios --latest --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
