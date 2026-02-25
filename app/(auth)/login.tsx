@@ -1,8 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useRef, useState } from "react";
+import { API_BASE_URL } from '@/config/general.config';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -18,20 +19,20 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-} from "react-native";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { notificationService } from '../../services/notificationService';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [showOverlay, setShowOverlay] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false); // <-- state cho ẩn/hiện mật khẩu
   const [loading, setLoading] = useState(false);
   const [resultModalVisible, setResultModalVisible] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalType, setModalType] = useState<"loading" | "success" | "error">(
-    "loading"
-  );
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalType, setModalType] = useState<'loading' | 'success' | 'error'>('loading');
 
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -82,57 +83,53 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     setShowOverlay(false);
     if (!username || !password) {
-      setModalType("error");
-      setModalMessage("Vui lòng nhập tài khoản và mật khẩu.");
+      setModalType('error');
+      setModalMessage('Vui lòng nhập tài khoản và mật khẩu.');
       setResultModalVisible(true);
       return;
     }
 
     setLoading(true);
-    setModalType("loading");
-    setModalMessage("Đang đăng nhập...");
+    setModalType('loading');
+    setModalMessage('Đang đăng nhập...');
     setResultModalVisible(true);
 
     try {
       const payload = { identifier: username, password };
-      const res = await fetch("https://sundate.justdemo.work/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
-      if (res.status === 400 && data?.error === "Validation failed") {
-        throw new Error("Vui lòng nhập đầy đủ thông tin đăng nhập.");
+      if (res.status === 400 && data?.error === 'Validation failed') {
+        throw new Error('Vui lòng nhập đầy đủ thông tin đăng nhập.');
       }
 
-      if (res.status === 401 && data?.message === "Invalid credentials") {
-        throw new Error("Sai tài khoản hoặc mật khẩu. Vui lòng kiểm tra lại.");
+      if (res.status === 401 && data?.message === 'Invalid credentials') {
+        throw new Error('Sai tài khoản hoặc mật khẩu. Vui lòng kiểm tra lại.');
       }
 
-      if (res.status === 401 && data?.message === "Account is deactivated") {
-        throw new Error(
-          "Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên."
-        );
+      if (res.status === 401 && data?.message === 'Account is deactivated') {
+        throw new Error('Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
       }
 
       if (!res.ok) {
-        throw new Error(
-          data?.message || "Đăng nhập thất bại. Vui lòng thử lại."
-        );
+        throw new Error(data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
       }
 
-      // ✅ Đăng nhập thành công
-      const token =
-        data?.token ||
-        data?.jwt ||
-        data?.accessToken ||
-        data?.data?.token ||
-        "";
-
+      // Lưu token (thử các tên trường phổ biến)???
+      // const token =
+      //   data?.token ||
+      //   data?.jwt ||
+      //   data?.accessToken ||
+      //   data?.data?.token ||
+      //   "";
+      const token = data.token;
       if (token) {
-        await SecureStore.setItemAsync("sundate_token", token);
+        await SecureStore.setItemAsync('sundate_token', token);
       }
 
       const fullName =
@@ -142,68 +139,90 @@ export default function LoginScreen() {
           : data?.user?.username) ||
         data?.fullName ||
         data?.name ||
-        "";
+        '';
+      await SecureStore.setItemAsync('sundate_fullName', fullName);
 
-      if (fullName) {
-        await SecureStore.setItemAsync("sundate_fullName", fullName);
+      const userId = data?.user?.id;
+      if (userId) {
+        try {
+          await SecureStore.setItemAsync('sundate_user_id', userId);
+          
+          // Register push token with timeout to prevent blocking
+          const registrationPromise = notificationService.registerPushTokenWithUserId(userId);
+          const timeoutPromise = new Promise<boolean>((resolve) => {
+            setTimeout(() => {
+              console.warn('[Login] Push token registration timed out after 10 seconds, continuing login...');
+              resolve(false);
+            }, 10000); // 10 second timeout
+          });
+
+          const result = await Promise.race([registrationPromise, timeoutPromise]);
+          if (result) {
+            console.log('[Login] Push token registered successfully for userId:', userId);
+          } else {
+            console.warn('[Login] Push token registration did not complete in time');
+          }
+        } catch (error) {
+          console.error('[Login] Failed to register push token:', error);
+          // Don't block login flow if push notification registration fails
+        }
       }
 
-      setModalType("success");
-      setModalMessage("Đăng nhập thành công!");
+      setModalType('success');
+      setModalMessage('Đăng nhập thành công!');
       setTimeout(() => {
         setResultModalVisible(false);
         closeModal();
-        router.replace("/(tabs)/overview");
+        router.replace('/(tabs)/overview');
       }, 1500);
+      router.push('/(tabs)/overview');
     } catch (err: any) {
-      console.error("[Login] error:", err);
-      setModalType("error");
-      setModalMessage(err.message || "Lỗi kết nối. Vui lòng thử lại.");
+      console.error('[Login] network/error:', err);
+      setModalType('error');
+      setModalMessage(err.message || 'Lỗi kết nối. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
-      {/* Logo */}
-      <Image
-        source={require("../../assets/images/Symbol.png")}
-        style={styles.logo1}
-      />
-
-      <Text style={styles.title}>Reservation and Order Management</Text>
-      <Text style={styles.subtitle}>Sundate - matcha holic shelter</Text>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.signInButton} onPress={openModal}>
-          <Text style={styles.signInText}>Log In</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <StatusBar style="dark" />
+        {/* Back Button */}
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#831B1B" />
+          <Text style={styles.backButtonText}>Quay lại</Text>
         </TouchableOpacity>
-        {/* <TouchableOpacity style={styles.signUpButton}>
-          <Text style={styles.signUpText}>Register</Text>
-        </TouchableOpacity> */}
+
+        <View style={styles.logoWrapper}>
+          {/* Logo */}
+          <Image source={require('../../assets/images/Logo.png')} style={styles.logo} />
+
+          <Text style={styles.title}>Reservation and Order Management</Text>
+          <Text style={styles.subtitle}>Sundate - matcha holic shelter</Text>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.signInButton} onPress={openModal}>
+            <Text style={styles.primaryButtonText}>Đăng Nhập</Text>
+          </TouchableOpacity>
+          {/* <TouchableOpacity style={styles.signUpButton}>
+            <Text style={styles.signUpText}>Register</Text>
+          </TouchableOpacity> */}
+        </View>
       </View>
 
       {/* Bottom Sheet Modal */}
-      <Modal transparent visible={showOverlay} animationType="none">
+      <Modal transparent visible={showOverlay} animationType="slide">
         <TouchableWithoutFeedback onPress={closeModal}>
           <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
             <TouchableWithoutFeedback>
-              <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-              >
-                <Animated.View
-                  style={[
-                    styles.bottomSheet,
-                    { transform: [{ translateY: slideAnim }] },
-                  ]}
-                >
-                  <Text style={styles.overlayTitle}>Log In</Text>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <Animated.View style={[styles.bottomSheet, { transform: [{ translateY: slideAnim }] }]}>
+                  <Text style={styles.overlayTitle}>Đăng Nhập</Text>
                   <View>
-                    <Text style={styles.inputLabel}>
-                      Email hoặc tên đăng nhập
-                    </Text>
+                    <Text style={styles.inputLabel}>Tên đăng nhập hoặc Email</Text>
                     <TextInput
                       style={styles.input}
                       value={username}
@@ -218,34 +237,23 @@ export default function LoginScreen() {
                       secureTextEntry={!showPassword} // toggle ẩn/hiện
                     />
                     {/* Nút ẩn/hiện mật khẩu */}
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.toggleBtn}
-                    >
-                      <Text style={styles.toggleText}>
-                        {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                      </Text>
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.toggleBtn}>
+                      <Text style={styles.toggleText}>{showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}</Text>
                     </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.signInBtn,
-                      loading ? { opacity: 0.7 } : null,
-                    ]}
-                    onPress={handleLogin}
-                    disabled={loading}
-                  >
-                    <Text style={styles.signInText2}>
-                      {loading ? "Đang đăng nhập..." : "Log In"}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                      style={[styles.signInBtn, loading ? { opacity: 0.7 } : null]}
+                      onPress={handleLogin}
+                      disabled={loading}
+                    >
+                      <Text style={styles.primaryButtonText}>{loading ? 'Đang xử lý...' : 'Đăng nhập'}</Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={closeModal}
-                  >
-                    <Text style={styles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
+                      <Text style={styles.cancelText}>Huỷ bỏ</Text>
+                    </TouchableOpacity>
+                  </View>
                 </Animated.View>
               </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
@@ -256,31 +264,23 @@ export default function LoginScreen() {
       <Modal transparent visible={resultModalVisible} animationType="fade">
         <View style={styles.resultOverlay}>
           <View style={styles.resultBox}>
-            {modalType === "loading" && (
+            {modalType === 'loading' && (
               <>
                 <ActivityIndicator size="large" color="#831B1B" />
                 <Text style={styles.resultText}>{modalMessage}</Text>
               </>
             )}
 
-            {modalType === "success" && (
+            {modalType === 'success' && (
               <>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={60}
-                  color="#4CAF50"
-                />
+                <Ionicons name="checkmark-circle-outline" size={60} color="#4CAF50" />
                 <Text style={styles.resultText}>{modalMessage}</Text>
               </>
             )}
 
-            {modalType === "error" && (
+            {modalType === 'error' && (
               <>
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={60}
-                  color="#E52424"
-                />
+                <Ionicons name="alert-circle-outline" size={60} color="#E52424" />
                 <Text style={styles.resultText}>{modalMessage}</Text>
                 <TouchableOpacity
                   style={styles.retryBtn}
@@ -296,158 +296,197 @@ export default function LoginScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  logoWrapper: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFF8DE',
+  },
   container: {
     flex: 1,
-    backgroundColor: "#FFF8DE",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#FFF8DE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logo1: {
+  backButton: {
+    position: 'absolute',
+    top: 10,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  backButtonText: {
+    color: '#831B1B',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  logo: {
     width: 250,
     height: 150,
     marginBottom: 20,
   },
   title: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#000",
-    textAlign: "center",
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: "#666",
-    textAlign: "center",
+    color: '#666',
+    textAlign: 'center',
     marginTop: 5,
   },
   buttonContainer: {
-    position: "absolute",
-    bottom: 50,
-    width: "100%",
-    alignItems: "center",
+    marginTop: 10,
+    alignItems: 'center',
+    width: '100%',
   },
+  // Primary button - shared base style
+  primaryButton: {
+    backgroundColor: '#831B1B',
+    borderRadius: 25,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Main screen button (90% width)
   signInButton: {
-    backgroundColor: "#831B1B",
+    backgroundColor: '#831B1B',
     borderRadius: 25,
     marginBottom: 15,
-    width: "90%",
+    width: '90%',
     height: 50,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  signInText: {
-    color: "#FFF8DE",
+  // Primary button text - shared style (white text)
+  primaryButtonText: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   signUpButton: {
-    backgroundColor: "#FFF8DE",
+    backgroundColor: '#FFF8DE',
     borderRadius: 25,
     marginBottom: 15,
-    width: "90%",
+    width: '90%',
     height: 50,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
-    borderColor: "#831B1B",
+    borderColor: '#831B1B',
   },
   signUpText: {
-    color: "#831B1B",
+    color: '#831B1B',
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   overlay: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   bottomSheet: {
-    width: "100%",
-    backgroundColor: "#FFF5E1",
+    backgroundColor: '#FFF5E1',
     padding: 20,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
+    width: '100%',
   },
   overlayTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 15,
-    textAlign: "center",
+    textAlign: 'center',
   },
   input: {
-    width: "100%",
+    width: '100%',
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: '#ccc',
     borderRadius: 10,
     padding: 10,
     marginBottom: 5,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   inputLabel: {
     marginBottom: 5,
   },
   toggleBtn: {
     marginBottom: 15,
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
+  },
+  // Secondary text style (for links/actions) - shared base
+  secondaryText: {
+    color: '#831B1B',
+    fontWeight: 'bold',
   },
   toggleText: {
-    color: "#831B1B",
+    color: '#831B1B',
     fontSize: 13,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
+  // Modal primary button (100% width) - uses primaryButton base
   signInBtn: {
-    backgroundColor: "#831B1B",
+    backgroundColor: '#831B1B',
     height: 50,
+    width: '100%',
     borderRadius: 25,
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 10,
-    justifyContent: "center",
-  },
-  signInText2: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    justifyContent: 'center',
   },
   cancelBtn: {
-    alignItems: "center",
+    width: '100%',
+    alignItems: 'center',
     paddingVertical: 10,
   },
   cancelText: {
-    color: "#831B1B",
-    fontWeight: "bold",
+    color: '#831B1B',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   resultOverlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   resultBox: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 30,
-    alignItems: "center",
-    width: "80%",
+    alignItems: 'center',
+    width: '80%',
   },
   resultText: {
     fontSize: 16,
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: 15,
-    color: "#333",
+    color: '#333',
   },
   retryBtn: {
     marginTop: 20,
-    backgroundColor: "#831B1B",
+    backgroundColor: '#831B1B',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryText: {
-    color: "#fff",
-    fontWeight: "600",
+    color: '#fff',
+    fontWeight: '600',
   },
 });

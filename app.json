@@ -16,9 +16,15 @@
       "router": {}
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sundate.sundatenotificationapp",
+      "buildNumber": "6",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.sundate.sundatenotificationapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Logo.png",
         "backgroundColor": "#ffffff"
@@ -32,6 +38,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
       [
         "expo-splash-screen",
         {
