@@ -7,7 +7,14 @@
     "icon": "./assets/images/Logo.png",
     "scheme": "sundatenotificationapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "owner": "sundate",
+    "extra": {
+      "eas": {
+        "projectId": "a21500e8-e570-4551-9351-6bf07b02e2eb"
+      },
+      "router": {}
+    },
     "ios": {
       "supportsTablet": true
     },
